@@ -13,9 +13,7 @@ tool itself is a single HTML file you open in a browser.
 There are three independent components. You only need the first one — the
 other two are optional, for optional features.
 
-```
 ![Architecture diagram: ...](architecture.png)
-```
 
 - **`prompt-forge.html`** — the tool itself. This is all you need to build
   prompts by hand. Everything else below is optional.
