@@ -8,7 +8,7 @@ Nothing here requires an account, a build step, or installing anything beyond
 Python (which most people doing local AI image generation already have). The
 tool itself is a single HTML file you open in a browser.
 
-## How the pieces fit together
+## How the it fits together
 
 There are three independent components. You only need the first one — the
 other two are optional, for optional features.
@@ -268,9 +268,3 @@ itself. Closing a terminal window stops whatever was running in it.
 see the `127.0.0.1` vs LAN IP note at the end of section 2.
 
 ---
-
-## Known-working reference config (Krea 2 Turbo)
-
-`simple` scheduler, ER_SDE sampler, CFG ~2.5, ~16 steps. A documented
-starting point from real testing, not a hard rule — your ideal settings will
-depend on your specific checkpoint and hardware.
