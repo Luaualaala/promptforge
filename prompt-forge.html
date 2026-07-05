@@ -778,6 +778,10 @@ async function enhancePrompt(){
   statusEl.textContent = 'Sending...';
 
   const draft = document.getElementById('posOutput').innerText;
+  const theme = document.getElementById('f_theme').value.trim();
+  const themeNote = theme
+    ? `\nThe user's stated idea/concept for this piece: "${theme}". This is the actual creative direction — if it implies a specific action, pose, scenario, or event (e.g. "mid-jump dodging an explosion", "casting a spell", "collapsing in exhaustion"), make sure the enhanced prompt actually depicts that concretely rather than defaulting to a static pose. Don't lose or genericize what's specific about it.`
+    : '';
   const lockedList = lockedFieldSummary();
   const lockNote = lockedList.length
     ? `\nThe following elements are locked by the user and must appear in your output essentially unchanged, word-for-word where possible: ${lockedList.map(f=>{
@@ -799,8 +803,8 @@ async function enhancePrompt(){
 Hard rules:
 - Literal, concrete visual description only. No metaphor, simile, or narration ("as if", "like", "seems to", "defying", "living scripture", "bowing to her power", etc are all forbidden).
 - Every phrase must describe something a camera or renderer could directly depict. If a concept has no direct visual form, cut it or replace it with a concrete equivalent (e.g. "glowing eyes" instead of "burns with otherworldly knowledge").
-- Keep total output under 70 words. Do not write a scene narrative — write a list of concrete visual descriptors.
-- If a style (e.g. anime, photoreal) is already present in the draft, lead with it as the first descriptor so it isn't fighting other stylistic language for control.${lockNote}`;
+- No fixed word limit — expand as much as the concept actually needs, including a specific scenario/action from the idea below if one is given. But don't pad with filler just to sound longer: every added phrase must add a distinct, concrete visual detail, still as a list of descriptors, not a narrated scene.
+- If a style (e.g. anime, photoreal) is already present in the draft, lead with it as the first descriptor so it isn't fighting other stylistic language for control.${themeNote}${lockNote}`;
 
   try{
     let result;
