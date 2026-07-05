@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# Editor/OS cruft
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Don't commit secrets if anyone ever hardcodes one for local testing
+*.env
+secrets.json
+
+# Logs
+*.log

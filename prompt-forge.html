@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PROMPT.FORGE — local SD/Flux prompt builder</title>
+<style>
+  :root{
+    --bg:#14161a;
+    --panel:#1b1e24;
+    --panel2:#20242c;
+    --border:#2b2f38;
+    --text:#e8e6e0;
+    --muted:#8b909c;
+    --accent:#5fb8ad;
+    --accent-dim:#3d7a72;
+    --warn:#d98c4a;
+    --warn-dim:#8f5c2e;
+    --mono:'IBM Plex Mono','Courier New',monospace;
+    --sans:'IBM Plex Sans','Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    min-height:100vh;
+  }
+  header{
+    padding:22px 28px 16px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+    flex-wrap:wrap;
+  }
+  header h1{
+    font-family:var(--mono);
+    font-size:19px;
+    letter-spacing:0.08em;
+    margin:0;
+    color:var(--text);
+  }
+  header h1 span{color:var(--accent);}
+  header p{
+    margin:0;
+    color:var(--muted);
+    font-size:13px;
+  }
+  .layout{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:1px;
+    background:var(--border);
+  }
+  @media(max-width:880px){ .layout{grid-template-columns:1fr;} }
+  .col{background:var(--bg); padding:24px 28px 60px; position:relative;}
+  .col::before{
+    content:"";
+    position:absolute; left:14px; top:0; bottom:0; width:1px;
+    background:var(--border);
+  }
+  .field{margin-bottom:16px; padding-left:18px; position:relative;}
+  .field::before{
+    content:"";
+    position:absolute; left:-4px; top:9px;
+    width:7px; height:7px; border-radius:50%;
+    background:var(--accent-dim);
+    border:1px solid var(--accent);
+  }
+  .field.neg::before{background:var(--warn-dim); border-color:var(--warn);}
+  label{
+    display:block;
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:5px;
+  }
+  input[type=text], textarea, select{
+    width:100%;
+    background:var(--panel);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:8px 10px;
+    border-radius:4px;
+    font-family:var(--sans);
+    font-size:13.5px;
+  }
+  textarea{resize:vertical; font-family:var(--mono); font-size:12.5px;}
+  input:focus, textarea:focus, select:focus{
+    outline:none; border-color:var(--accent);
+  }
+  .row{display:flex; gap:10px;}
+  .row > *{flex:1;}
+  .toggle-group{display:flex; border:1px solid var(--border); border-radius:4px; overflow:hidden; width:fit-content;}
+  .toggle-group button{
+    background:var(--panel); color:var(--muted); border:none; padding:6px 14px;
+    font-family:var(--mono); font-size:11.5px; cursor:pointer; letter-spacing:.03em;
+  }
+  .toggle-group button.active{background:var(--accent-dim); color:var(--text);}
+  h2{
+    font-family:var(--mono); font-size:12px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--muted);
+    margin:26px 0 14px; padding-left:18px;
+    border-bottom:1px solid var(--border); padding-bottom:8px;
+  }
+  h2:first-of-type{margin-top:0;}
+  .btn{
+    background:var(--accent-dim); color:var(--text); border:1px solid var(--accent);
+    padding:9px 16px; border-radius:4px; font-family:var(--mono); font-size:12.5px;
+    cursor:pointer; letter-spacing:.03em;
+  }
+  .btn:hover{background:var(--accent);}
+  .btn.secondary{background:var(--panel); border-color:var(--border); color:var(--muted);}
+  .btn.secondary:hover{border-color:var(--muted); color:var(--text);}
+  .btn.warn{border-color:var(--warn); background:var(--warn-dim);}
+  .btn.warn:hover{background:var(--warn);}
+  .btn-row{display:flex; gap:8px; flex-wrap:wrap; padding-left:18px; margin-bottom:8px;}
+  .output-box{
+    background:var(--panel2); border:1px solid var(--border); border-radius:4px;
+    padding:12px; font-family:var(--mono); font-size:12.5px; white-space:pre-wrap;
+    min-height:70px; margin-left:18px; word-break:break-word;
+  }
+  .output-wrap{margin-bottom:22px;}
+  .tag{
+    display:inline-block; background:var(--panel); border:1px solid var(--border);
+    border-radius:3px; padding:2px 8px; margin:2px 4px 2px 0; font-family:var(--mono);
+    font-size:12px; cursor:pointer; user-select:none;
+  }
+  .tag:hover{border-color:var(--accent);}
+  .tag.w-low{color:var(--muted);}
+  .tag.w-high{color:var(--accent); border-color:var(--accent-dim);}
+  .hint{color:var(--muted); font-size:11px; margin:4px 0 0; padding-left:18px;}
+  .status{
+    font-family:var(--mono); font-size:11px; padding-left:18px; margin-top:6px; min-height:14px;
+  }
+  .status.ok{color:var(--accent);}
+  .status.err{color:var(--warn);}
+  .word-count-warn{color:var(--warn) !important;}
+  details{padding-left:18px; margin-bottom:16px;}
+  summary{
+    font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--muted); cursor:pointer;
+  }
+  details[open] summary{margin-bottom:10px;}
+  .field-head{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .field-head label:first-child{margin-bottom:0;}
+  .lock-toggle{font-family:var(--mono); font-size:10px; color:var(--muted); cursor:pointer; user-select:none; display:flex; align-items:center; gap:4px; opacity:0.55; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;}
+  .lock-toggle input{cursor:pointer; width:auto; margin:0;}
+  .lock-toggle.locked{opacity:1; color:var(--warn);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>PROMPT<span>.</span>FORGE</h1>
+  <p>local prompt builder — Danbooru / natural-language, SDXL / Flux / ComfyUI</p>
+</header>
+
+<div class="layout">
+
+  <!-- LEFT: BUILDER -->
+  <div class="col">
+    <h2>Prompt fields</h2>
+
+    <div class="field">
+      <div class="field-head">
+        <label>Subject</label>
+        <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="subject"> lock</label>
+      </div>
+      <input type="text" id="f_subject" placeholder="silver hair, red eyes">
+    </div>
+    <div class="field">
+      <div class="field-head">
+        <label><input type="checkbox" id="f_hasChar" style="width:auto; vertical-align:middle; margin-right:6px;">Has a character</label>
+        <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="character"> lock</label>
+      </div>
+      <div class="row" id="charOptions" style="display:none; margin-top:6px;">
+        <div style="flex:1;">
+          <select id="f_gender">
+            <option value="">Gender — unspecified</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+            <option value="nonbinary">Non-binary / androgynous</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <select id="f_age">
+            <option value="">Age — unspecified</option>
+            <option value="young_adult">Young adult</option>
+            <option value="adult">Adult</option>
+            <option value="middle_aged">Middle-aged</option>
+            <option value="elderly">Elderly</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-head">
+        <label>Style / character refs</label>
+        <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="style"> lock</label>
+      </div>
+      <div class="row">
+        <input type="text" id="f_style" placeholder="ghibli style, cel shaded" style="flex:2;">
+        <select id="f_stylePreset" style="flex:1;" onchange="applyStylePreset()">
+          <option value="">Quick style...</option>
+          <option value="anime, cel shaded">Anime / cel-shaded</option>
+          <option value="photorealistic, 35mm film">Photorealistic</option>
+          <option value="oil painting, painterly">Oil painting</option>
+          <option value="watercolor">Watercolor</option>
+          <option value="3d render, octane render">3D render</option>
+          <option value="cyberpunk, neon-lit">Cyberpunk</option>
+          <option value="ukiyo-e woodblock">Ukiyo-e</option>
+          <option value="pixel art">Pixel art</option>
+          <option value="gothic, dark fantasy">Gothic / dark fantasy</option>
+          <option value="film noir, high contrast">Film noir</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <div class="field-head">
+          <label>Medium</label>
+          <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="medium"> lock</label>
+        </div>
+        <input type="text" id="f_medium" placeholder="digital painting">
+      </div>
+      <div class="field">
+        <div class="field-head">
+          <label>Lighting</label>
+          <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="lighting"> lock</label>
+        </div>
+        <input type="text" id="f_lighting" placeholder="rim light, volumetric">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <div class="field-head">
+          <label>Composition</label>
+          <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="comp"> lock</label>
+        </div>
+        <input type="text" id="f_comp" placeholder="dynamic angle, close-up">
+      </div>
+      <div class="field">
+        <div class="field-head">
+          <label>Quality tags</label>
+          <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="quality"> lock</label>
+        </div>
+        <input type="text" id="f_quality" placeholder="masterpiece, best quality">
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-head">
+        <label>Background</label>
+        <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="background"> lock</label>
+      </div>
+      <input type="text" id="f_background" placeholder="dense pine forest, stone ruins in distance">
+    </div>
+
+    <div class="field neg">
+      <div class="field-head">
+        <label>Negative prompt (editable base)</label>
+        <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="negative"> lock</label>
+      </div>
+      <textarea id="f_negative" rows="3">bad anatomy, extra limbs, low quality, blurry, watermark, deformed hands</textarea>
+    </div>
+
+    <h2>Output syntax</h2>
+    <div class="field">
+      <div class="toggle-group" id="syntaxToggle">
+        <button data-v="tags" class="active">Tag-style (SDXL/Pony)</button>
+        <button data-v="natural">Natural language (Flux/SD3)</button>
+      </div>
+      <p class="hint">Tag-style: comma-separated, click a tag in output to cycle weight. Natural: plain sentence, no weighting.</p>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="buildPrompt()">Build prompt</button>
+      <button class="btn secondary" onclick="randomize()">Randomize inspiration</button>
+      <button class="btn secondary" onclick="clearFields()">Clear</button>
+    </div>
+
+    <h2>LLM enhance (optional)</h2>
+    <div class="field">
+      <label>Backend</label>
+      <div class="toggle-group" id="backendToggle">
+        <button data-v="local" class="active">Local server</button>
+        <button data-v="anthropic">Anthropic API</button>
+      </div>
+    </div>
+
+    <div id="localConfig">
+      <div class="row">
+        <div class="field">
+          <label>Endpoint format</label>
+          <select id="localFormat">
+            <option value="openai">OpenAI-compatible (/v1/chat/completions) — llama.cpp server, LM Studio, text-gen-webui, vLLM</option>
+            <option value="ollama">Ollama native (/api/chat)</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Base URL (origin only — no path)</label>
+          <input type="text" id="localUrl" placeholder="http://localhost:11434" value="http://localhost:11434">
+        </div>
+        <div class="field">
+          <label>Model name</label>
+          <input type="text" id="localModel" placeholder="e.g. qwen2.5:14b">
+        </div>
+      </div>
+      <p class="hint">Any path typed here (e.g. /v1/models) is stripped automatically — only scheme+host+port is used, the full endpoint path is added for you.</p>
+    </div>
+
+    <div id="anthropicConfig" style="display:none;">
+      <div class="row">
+        <div class="field">
+          <label>API key (stored in this browser only)</label>
+          <input type="text" id="anthropicKey" placeholder="sk-ant-...">
+        </div>
+        <div class="field">
+          <label>Model</label>
+          <input type="text" id="anthropicModel" value="claude-sonnet-4-6">
+        </div>
+      </div>
+      <p class="hint">Calls api.anthropic.com directly from your browser with your key. Fine for a local personal tool — just don't share this file with the key filled in.</p>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="enhancePrompt()">Enhance draft via LLM</button>
+    </div>
+    <div class="status" id="llmStatus"></div>
+
+    <div class="field" style="margin-top:16px;">
+      <label>Theme / idea (optional — leave blank for AI's own pick)</label>
+      <input type="text" id="f_theme" placeholder="e.g. solarpunk, noir detective, feral gods">
+    </div>
+    <div class="btn-row">
+      <button class="btn warn" onclick="generateFullDraft()">Generate full draft with AI</button>
+    </div>
+    <div class="status" id="draftStatus"></div>
+    <p class="hint">Fills every field (subject, style, medium, lighting, composition, quality, negative additions, and character gender/age if it invents one) from a single AI call, then builds the prompt. Uses whichever backend is selected above.</p>
+
+    <details>
+      <summary>Why can't this run inside Claude Design / an artifact?</summary>
+      <p class="hint" style="padding-left:0;">Artifacts render in a sandboxed environment with no route to your machine's localhost and no persistent browser storage. This file runs directly in your own browser, so it can reach Ollama/llama.cpp on localhost and save presets locally.</p>
+    </details>
+  </div>
+
+  <!-- RIGHT: OUTPUT -->
+  <div class="col">
+    <h2>Positive prompt</h2>
+    <div class="output-wrap">
+      <div class="output-box" id="posOutput" contenteditable="true">Fill in fields and click "Build prompt".</div>
+      <p class="hint" id="wordCountLabel" style="padding-left:0; margin-top:6px;"></p>
+      <div class="btn-row" style="margin-top:2px;">
+        <button class="btn secondary" onclick="copyBox('posOutput')">Copy</button>
+      </div>
+    </div>
+
+    <h2>Negative prompt</h2>
+    <div class="output-wrap">
+      <div class="output-box" id="negOutput" contenteditable="true"></div>
+      <div class="btn-row" style="margin-top:8px;">
+        <button class="btn secondary" onclick="copyBox('negOutput')">Copy</button>
+        <button class="btn secondary" onclick="copyBoth()">Copy both</button>
+      </div>
+    </div>
+
+    <h2>Multi-prompt segments (concat/combine)</h2>
+    <div class="row" style="padding-left:18px;">
+      <input type="text" id="segmentLabel" placeholder="segment label (optional)">
+      <button class="btn secondary" onclick="addSegment()" style="flex:0 0 auto;">Add current build</button>
+    </div>
+    <div id="segmentList" style="padding-left:18px; margin-top:10px;"></div>
+    <div class="row" style="padding-left:18px; margin-top:10px;">
+      <select id="segmentSeparator" onchange="document.getElementById('segmentCustomSep').style.display = this.value==='custom' ? 'block' : 'none';">
+        <option value=", ">Comma-join (single scene)</option>
+        <option value="\n">Newline-join</option>
+        <option value=" BREAK ">BREAK-join (regional/multi-subject)</option>
+        <option value="custom">Custom separator...</option>
+      </select>
+      <input type="text" id="segmentCustomSep" placeholder="custom separator" style="display:none;">
+    </div>
+    <div class="btn-row">
+      <button class="btn warn" onclick="combineSegments()">Combine into output</button>
+      <button class="btn secondary" onclick="clearSegments()">Clear segments</button>
+    </div>
+    <p class="hint">Build a prompt, add it as a segment, repeat for each character/subject/scene, then combine. BREAK-join is for workflows/custom nodes that split on that keyword for regional or multi-subject conditioning — plain concatenation otherwise, this doesn't do actual regional conditioning itself.</p>
+
+    <h2>Presets</h2>
+    <div class="row" style="padding-left:18px;">
+      <input type="text" id="presetName" placeholder="preset name">
+      <button class="btn secondary" onclick="savePreset()" style="flex:0 0 auto;">Save</button>
+    </div>
+    <div id="presetList" style="padding-left:18px; margin-top:10px;"></div>
+
+    <h2>Prompt history</h2>
+    <div id="historyList" style="padding-left:18px;"></div>
+    <div class="btn-row">
+      <button class="btn secondary" onclick="clearHistory()">Clear history</button>
+    </div>
+    <p class="hint">Every build (manual, randomized, or AI-generated) is logged automatically, newest first, capped at 50. Stored in this browser only.</p>
+
+    <h2>Send to ComfyUI</h2>
+    <div class="field">
+      <label>ComfyUI base URL</label>
+      <input type="text" id="comfyUrl" placeholder="http://127.0.0.1:8188" value="http://127.0.0.1:8188">
+    </div>
+    <div class="field">
+      <label>Workflow (API format — ComfyUI menu → Workflow → Export (API))</label>
+      <textarea id="comfyWorkflow" rows="4" placeholder="Paste your exported API-format workflow JSON here"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn secondary" onclick="parseComfyWorkflow()">Parse workflow</button>
+    </div>
+    <div class="row" id="comfyNodeSelectRow" style="display:none; padding-left:18px;">
+      <div style="flex:1;">
+        <label style="display:block; font-family:var(--mono); font-size:11px; color:var(--muted); margin-bottom:5px;">Positive prompt node</label>
+        <select id="comfyPosNode"></select>
+      </div>
+      <div style="flex:1;">
+        <label style="display:block; font-family:var(--mono); font-size:11px; color:var(--muted); margin-bottom:5px;">Negative prompt node</label>
+        <select id="comfyNegNode"><option value="">None</option></select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn warn" onclick="sendToComfyUI()">Send to ComfyUI</button>
+    </div>
+    <div class="status" id="comfyStatus"></div>
+    <p class="hint">Requires ComfyUI launched with <code>--enable-cors-header "*"</code> to accept requests from a browser. Workflow, URL, and node choice are saved locally so you only paste this once. This queues generation directly — it does not wait for or show the resulting image.</p>
+
+    <h2>Bridge to custom node (live, no export)</h2>
+    <div class="field">
+      <label>Bridge URL (run promptforge_bridge.py locally first)</label>
+      <input type="text" id="bridgeUrl" placeholder="http://127.0.0.1:8199" value="http://127.0.0.1:8199">
+    </div>
+    <div class="field">
+      <label><input type="checkbox" id="bridgeAutoPush" checked style="width:auto; vertical-align:middle; margin-right:6px;">Auto-push every time a prompt is built</label>
+    </div>
+    <div class="btn-row">
+      <button class="btn secondary" onclick="pushToBridge(true)">Push now</button>
+    </div>
+    <div class="status" id="bridgeStatus"></div>
+    <p class="hint">Pairs with the "Prompt Forge Bridge" ComfyUI node — wire its two STRING outputs into your text-encode nodes. No workflow paste needed; the node re-fetches from here on every queue.</p>
+
+    <h2>Backup &amp; restore</h2>
+    <div class="btn-row">
+      <button class="btn secondary" onclick="exportBackup()">Export all data</button>
+      <button class="btn secondary" onclick="document.getElementById('importFile').click()">Import backup</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none;" onchange="importBackup(event)">
+    </div>
+    <div class="status" id="backupStatus"></div>
+    <p class="hint">Presets, history, segments, and your ComfyUI/bridge config live only in this browser's local storage — clearing browser data, going incognito, or moving to a new machine loses all of it. Export periodically if any of this matters to you.</p>
+  </div>
+
+</div>
+
+<script>
+// ---------- state ----------
+let syntaxMode = 'tags';
+let backend = 'local';
+
+// Chrome says "Failed to fetch", Firefox says "NetworkError when attempting to fetch
+// resource", Safari says "Load failed" — all mean the same thing: unreachable host,
+// refused connection, or a CORS preflight that didn't pass. Match all of them so the
+// helpful diagnostic actually shows regardless of browser.
+function isNetworkError(err){
+  const msg = (err && err.message) || '';
+  return /failed to fetch|networkerror|load failed/i.test(msg);
+}
+let tagWeights = {}; // tagText -> weight
+
+// ---------- toggles ----------
+function wireToggle(id, onChange){
+  const el = document.getElementById(id);
+  el.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      el.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      onChange(btn.dataset.v);
+    });
+  });
+}
+wireToggle('syntaxToggle', v=>{ syntaxMode = v; });
+wireToggle('backendToggle', v=>{
+  backend = v;
+  document.getElementById('localConfig').style.display = v==='local' ? 'block':'none';
+  document.getElementById('anthropicConfig').style.display = v==='anthropic' ? 'block':'none';
+});
+
+document.getElementById('f_hasChar').addEventListener('change', (e)=>{
+  document.getElementById('charOptions').style.display = e.target.checked ? 'flex' : 'none';
+});
+
+const locks = {subject:false, character:false, style:false, medium:false, lighting:false, comp:false, quality:false, background:false, negative:false};
+document.querySelectorAll('.lockbox').forEach(cb=>{
+  cb.addEventListener('change', e=>{
+    locks[e.target.dataset.field] = e.target.checked;
+    e.target.closest('.lock-toggle').classList.toggle('locked', e.target.checked);
+  });
+});
+function lockedFieldSummary(){
+  return Object.entries(locks).filter(([,v])=>v).map(([k])=>k);
+}
+
+function applyStylePreset(){
+  const preset = document.getElementById('f_stylePreset').value;
+  if(!preset) return;
+  const styleField = document.getElementById('f_style');
+  const current = styleField.value.trim();
+  styleField.value = current ? current + ', ' + preset : preset;
+  document.getElementById('f_stylePreset').value = '';
+}
+
+// ---------- build prompt ----------
+const inspirationPools = {
+  subject: ["lone astronaut","feral fox spirit","cybernetic monk","rain-soaked detective","ancient library keeper"],
+  style: ["ukiyo-e woodblock","synthwave","gothic oil painting","cel-shaded anime","brutalist concept art"],
+  medium: ["digital painting","35mm film photo","watercolor","3d render, octane","ink wash"],
+  lighting: ["golden hour","harsh studio strobe","bioluminescent glow","overcast diffuse light","neon backlight"],
+  comp: ["extreme close-up","wide establishing shot","dutch angle","symmetrical framing","over-the-shoulder"],
+  quality: ["masterpiece, best quality, highly detailed","8k uhd, sharp focus","award winning, trending on artstation"],
+  background: ["dense misty forest","neon-lit alley at night","open desert horizon","cluttered workshop interior","crumbling stone ruins"]
+};
+
+function randomize(){
+  const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+  document.getElementById('f_subject').value = pick(inspirationPools.subject);
+  document.getElementById('f_style').value = pick(inspirationPools.style);
+  document.getElementById('f_medium').value = pick(inspirationPools.medium);
+  document.getElementById('f_lighting').value = pick(inspirationPools.lighting);
+  document.getElementById('f_comp').value = pick(inspirationPools.comp);
+  document.getElementById('f_quality').value = pick(inspirationPools.quality);
+  document.getElementById('f_background').value = pick(inspirationPools.background);
+  buildPrompt();
+}
+
+function clearFields(){
+  if(!confirm('Clear all fields and the current output?')) return;
+  ['f_subject','f_style','f_medium','f_lighting','f_comp','f_quality','f_background'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('posOutput').innerText = 'Fill in fields and click "Build prompt".';
+  document.getElementById('negOutput').innerText = '';
+  tagWeights = {};
+}
+
+function buildPrompt(){
+  const vals = {
+    subject: document.getElementById('f_subject').value.trim(),
+    style: document.getElementById('f_style').value.trim(),
+    medium: document.getElementById('f_medium').value.trim(),
+    lighting: document.getElementById('f_lighting').value.trim(),
+    comp: document.getElementById('f_comp').value.trim(),
+    quality: document.getElementById('f_quality').value.trim(),
+    background: document.getElementById('f_background').value.trim(),
+  };
+
+  let charPrefix = '';
+  if(document.getElementById('f_hasChar').checked){
+    const gender = document.getElementById('f_gender').value;
+    const age = document.getElementById('f_age').value;
+    if(syntaxMode === 'tags'){
+      const genderTag = {female:'1girl', male:'1boy', nonbinary:'1other'}[gender] || '';
+      const ageTag = {young_adult:'young adult', adult:'adult', middle_aged:'middle-aged', elderly:'elderly'}[age] || '';
+      charPrefix = [genderTag, ageTag].filter(Boolean).join(', ');
+    } else {
+      const genderPhrase = {female:'a woman', male:'a man', nonbinary:'a person'}[gender] || (age ? 'a person' : '');
+      const ageWord = {young_adult:'young adult', adult:'', middle_aged:'middle-aged', elderly:'elderly'}[age] || '';
+      charPrefix = [ageWord, genderPhrase].filter(Boolean).join(' ').trim();
+    }
+  }
+
+  const parts = [charPrefix, ...Object.values(vals)].filter(Boolean);
+  const negBase = document.getElementById('f_negative').value.trim();
+
+  const posBox = document.getElementById('posOutput');
+  const negBox = document.getElementById('negOutput');
+
+  if(syntaxMode === 'tags'){
+    tagWeights = {};
+    parts.forEach(p=>{
+      p.split(',').map(s=>s.trim()).filter(Boolean).forEach(tag=>{ tagWeights[tag] = 1.0; });
+    });
+    renderTagOutput();
+    negBox.innerText = negBase.split(',').map(s=>s.trim()).filter(Boolean).join(', ');
+  } else {
+    posBox.innerText = parts.join(', ');
+    negBox.innerText = negBase;
+  }
+
+  pushHistory(document.getElementById('posOutput').innerText, document.getElementById('negOutput').innerText);
+}
+
+function renderTagOutput(){
+  const posBox = document.getElementById('posOutput');
+  posBox.innerHTML = '';
+  posBox.contentEditable = false; // switch to click-to-weight mode
+  Object.entries(tagWeights).forEach(([tag,w], i)=>{
+    const span = document.createElement('span');
+    span.className = 'tag' + (w<1 ? ' w-low' : w>1 ? ' w-high' : '');
+    span.textContent = w===1 ? tag : `(${tag}:${w.toFixed(1)})`;
+    span.title = 'click to cycle weight';
+    span.onclick = ()=>{
+      const steps = [0.6,0.8,1.0,1.2,1.4];
+      let idx = steps.indexOf(w);
+      w = steps[(idx+1) % steps.length];
+      tagWeights[tag] = w;
+      renderTagOutput();
+    };
+    posBox.appendChild(span);
+    if(i < Object.keys(tagWeights).length - 1) posBox.appendChild(document.createTextNode(', '));
+  });
+}
+
+function copyBox(id){
+  const box = document.getElementById(id);
+  const text = box.innerText;
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(()=>btn.textContent = orig, 1200);
+  });
+}
+
+function copyBoth(){
+  const positive = document.getElementById('posOutput').innerText;
+  const negative = document.getElementById('negOutput').innerText;
+  const combined = `Positive:\n${positive}\n\nNegative:\n${negative}`;
+  navigator.clipboard.writeText(combined).then(()=>{
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(()=>btn.textContent = orig, 1200);
+  });
+}
+
+// Word-count guidance tied to Krea 2's documented prompt-length bands:
+// exploration ~5-20 words, controlled image ~30-80, complex scene ~80-140.
+function updateWordCount(){
+  const el = document.getElementById('wordCountLabel');
+  if(!el) return;
+  const text = document.getElementById('posOutput').innerText || '';
+  const trimmed = text.trim();
+  if(!trimmed || trimmed.includes('Fill in fields')){ el.textContent = ''; el.className = 'hint'; return; }
+  const words = trimmed.split(/\s+/).length;
+  let tier;
+  if(words <= 20) tier = 'exploration range';
+  else if(words <= 80) tier = 'controlled-image range';
+  else if(words <= 140) tier = 'complex-scene range';
+  else tier = "past the documented complex-scene ceiling — may dilute attention on longer-context encoders";
+  el.textContent = `${words} words · ${tier}`;
+  el.className = 'hint' + (words > 140 ? ' word-count-warn' : '');
+}
+document.getElementById('posOutput').addEventListener('input', updateWordCount);
+
+// Ctrl/Cmd+Enter builds the prompt from anywhere in the form.
+document.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
+    e.preventDefault();
+    buildPrompt();
+  }
+});
+
+const genrePool = [
+  'nature and wildlife', 'urban noir / detective', 'cosmic / deep space', 'underwater / oceanic',
+  'historical / period piece', 'steampunk', 'post-apocalyptic wasteland', 'mythology and folklore',
+  'quiet slice-of-life', 'gothic horror', 'desert and wasteland', 'arctic / frozen landscape',
+  'dense jungle', 'industrial / brutalist architecture', 'pastoral countryside', 'festival and celebration',
+  'surreal / abstract', 'high fantasy', 'noir cyberpunk', 'solarpunk / utopian eco-future'
+];
+
+async function generateFullDraft(){
+  const statusEl = document.getElementById('draftStatus');
+  statusEl.className = 'status';
+  statusEl.textContent = 'Generating...';
+
+  let theme = document.getElementById('f_theme').value.trim();
+  if(!theme){
+    theme = genrePool[Math.floor(Math.random() * genrePool.length)];
+  }
+  const styleNote = syntaxMode === 'tags'
+    ? 'Field values should be short comma-separated Danbooru-style tags/phrases (2-5 words each), not full sentences.'
+    : 'Field values should be short natural-language phrases (a few words each), not full sentences.';
+
+  const sys = `You invent creative Stable Diffusion / ComfyUI image concepts. ${styleNote}
+Every field value must be literal, concrete visual description — no metaphor, simile, or narration ("as if", "like", "living", "defying", "bowing to", etc are forbidden). Each field could stand alone as a thing a camera could photograph.
+Respond with ONLY a single valid JSON object, no markdown fences, no explanation, matching exactly this shape:
+{"subject":"","style":"","medium":"","lighting":"","comp":"","quality":"","background":"","negative_additions":"","has_character":false,"gender":"","age":""}
+- "gender" must be one of "female","male","nonbinary","" (empty if has_character is false or unspecified)
+- "age" must be one of "young_adult","adult","middle_aged","elderly","" 
+- "negative_additions" is a short comma-separated list of extra things to avoid, beyond the usual bad-anatomy/blurry basics, or "" if none needed
+- Keep every adult; do not invent a minor.`;
+
+  const lockContext = Object.entries(locks)
+    .filter(([,v])=>v)
+    .map(([field])=>{
+      const valMap = {
+        subject: document.getElementById('f_subject').value,
+        style: document.getElementById('f_style').value,
+        medium: document.getElementById('f_medium').value,
+        lighting: document.getElementById('f_lighting').value,
+        comp: document.getElementById('f_comp').value,
+        quality: document.getElementById('f_quality').value,
+        background: document.getElementById('f_background').value,
+        negative: document.getElementById('f_negative').value,
+        character: document.getElementById('f_hasChar').checked
+          ? `${document.getElementById('f_gender').value || 'unspecified gender'}, ${document.getElementById('f_age').value || 'unspecified age'}`
+          : 'no character'
+      };
+      return `${field}: "${valMap[field]}"`;
+    }).join('; ');
+
+  const sysFull = lockContext
+    ? `${sys}\nThese fields are already fixed and will not be changed — invent the rest so it stays coherent with them, but you don't need to repeat their values in your JSON: ${lockContext}.`
+    : sys;
+
+  const userMsg = `Invent one original image concept in this space: ${theme}. Don't default to cyberpunk or sci-fi unless that's the genre given.`;
+
+  try{
+    let raw;
+    if(backend === 'local'){
+      raw = await callLocal(sysFull, userMsg);
+    } else {
+      raw = await callAnthropic(sysFull, userMsg);
+    }
+
+    const match = raw.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error('model did not return JSON — try again or switch models');
+    const data = JSON.parse(match[0]);
+
+    if(!locks.subject) document.getElementById('f_subject').value = data.subject || '';
+    if(!locks.style) document.getElementById('f_style').value = data.style || '';
+    if(!locks.medium) document.getElementById('f_medium').value = data.medium || '';
+    if(!locks.lighting) document.getElementById('f_lighting').value = data.lighting || '';
+    if(!locks.comp) document.getElementById('f_comp').value = data.comp || '';
+    if(!locks.quality) document.getElementById('f_quality').value = data.quality || '';
+    if(!locks.background) document.getElementById('f_background').value = data.background || '';
+
+    if(!locks.negative && data.negative_additions){
+      const negField = document.getElementById('f_negative');
+      const current = negField.value.trim();
+      negField.value = current ? current + ', ' + data.negative_additions : data.negative_additions;
+    }
+
+    if(!locks.character){
+      const hasChar = !!data.has_character;
+      document.getElementById('f_hasChar').checked = hasChar;
+      document.getElementById('charOptions').style.display = hasChar ? 'flex' : 'none';
+      if(hasChar){
+        document.getElementById('f_gender').value = ['female','male','nonbinary'].includes(data.gender) ? data.gender : '';
+        document.getElementById('f_age').value = ['young_adult','adult','middle_aged','elderly'].includes(data.age) ? data.age : '';
+      }
+    }
+
+    buildPrompt();
+    statusEl.className = 'status ok';
+    const lockedList = lockedFieldSummary();
+    const base = document.getElementById('f_theme').value.trim() ? 'Draft generated.' : `Draft generated (genre: ${theme}).`;
+    statusEl.textContent = lockedList.length ? `${base} Kept locked: ${lockedList.join(', ')}.` : base;
+  } catch(err){
+    statusEl.className = 'status err';
+    if(isNetworkError(err)){
+      statusEl.textContent = 'Failed to fetch — check backend config / CORS.';
+    } else {
+      statusEl.textContent = 'Error: ' + err.message;
+    }
+    console.error(err);
+  }
+}
+
+// ---------- LLM enhance ----------
+async function enhancePrompt(){
+  const statusEl = document.getElementById('llmStatus');
+  statusEl.className = 'status';
+  statusEl.textContent = 'Sending...';
+
+  const draft = document.getElementById('posOutput').innerText;
+  const lockedList = lockedFieldSummary();
+  const lockNote = lockedList.length
+    ? `\nThe following elements are locked by the user and must appear in your output essentially unchanged, word-for-word where possible: ${lockedList.map(f=>{
+        const valMap = {
+          subject: document.getElementById('f_subject').value, style: document.getElementById('f_style').value,
+          medium: document.getElementById('f_medium').value, lighting: document.getElementById('f_lighting').value,
+          comp: document.getElementById('f_comp').value, quality: document.getElementById('f_quality').value,
+          background: document.getElementById('f_background').value,
+          negative: document.getElementById('f_negative').value,
+          character: document.getElementById('f_hasChar').checked ? `${document.getElementById('f_gender').value||'unspecified gender'}, ${document.getElementById('f_age').value||'unspecified age'}` : ''
+        };
+        return `${f} = "${valMap[f]}"`;
+      }).join('; ')}. This is a best-effort instruction, not a hard guarantee — but treat it as a strong constraint.`
+    : '';
+  const styleInstruction = syntaxMode === 'tags'
+    ? 'Output ONLY a comma-separated Danbooru-style tag prompt suitable for SDXL/Pony/Illustrious checkpoints. No explanation, no markdown.'
+    : 'Output ONLY a natural-language descriptive prompt suitable for Flux/SD3. No explanation, no markdown.';
+  const sys = `You are an expert Stable Diffusion / ComfyUI prompt engineer. Expand and refine the given draft into a stronger image generation prompt. ${styleInstruction}
+Hard rules:
+- Literal, concrete visual description only. No metaphor, simile, or narration ("as if", "like", "seems to", "defying", "living scripture", "bowing to her power", etc are all forbidden).
+- Every phrase must describe something a camera or renderer could directly depict. If a concept has no direct visual form, cut it or replace it with a concrete equivalent (e.g. "glowing eyes" instead of "burns with otherworldly knowledge").
+- Keep total output under 70 words. Do not write a scene narrative — write a list of concrete visual descriptors.
+- If a style (e.g. anime, photoreal) is already present in the draft, lead with it as the first descriptor so it isn't fighting other stylistic language for control.${lockNote}`;
+
+  try{
+    let result;
+    if(backend === 'local'){
+      result = await callLocal(sys, draft);
+    } else {
+      result = await callAnthropic(sys, draft);
+    }
+    document.getElementById('posOutput').contentEditable = true;
+    document.getElementById('posOutput').innerText = result.trim();
+    statusEl.className = 'status ok';
+    statusEl.textContent = 'Done.';
+    pushHistory(result.trim(), document.getElementById('negOutput').innerText);
+  } catch(err){
+    statusEl.className = 'status err';
+    if(isNetworkError(err)){
+      statusEl.textContent = 'Failed to fetch — server unreachable, or it responded to the preflight without proper CORS headers (Access-Control-Allow-Origin/Methods/Headers). Check your local server\'s CORS setting.';
+    } else {
+      statusEl.textContent = 'Error: ' + err.message;
+    }
+    console.error(err);
+  }
+}
+
+async function callLocal(sys, draft){
+  const raw = document.getElementById('localUrl').value.trim();
+  let base;
+  try{
+    base = new URL(raw).origin; // strip any path the user left in the field, keep only scheme+host+port
+  } catch(e){
+    throw new Error('base URL is not valid (need e.g. http://127.0.0.1:1234)');
+  }
+  const model = document.getElementById('localModel').value.trim();
+  const format = document.getElementById('localFormat').value;
+
+  if(format === 'ollama'){
+    const res = await fetch(base + '/api/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model, stream:false,
+        messages:[{role:'system',content:sys},{role:'user',content:draft}]
+      })
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    return data.message?.content || JSON.stringify(data);
+  } else {
+    const res = await fetch(base + '/v1/chat/completions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model, stream:false,
+        messages:[{role:'system',content:sys},{role:'user',content:draft}]
+      })
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || JSON.stringify(data);
+  }
+}
+
+async function callAnthropic(sys, draft){
+  const key = document.getElementById('anthropicKey').value.trim();
+  const model = document.getElementById('anthropicModel').value.trim();
+  if(!key) throw new Error('no API key set');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key': key,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body: JSON.stringify({
+      model, max_tokens:400,
+      system: sys,
+      messages:[{role:'user', content: draft}]
+    })
+  });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  return (data.content || []).map(b=>b.text||'').join('\n');
+}
+
+// ---------- presets (localStorage, this is a standalone local file) ----------
+function getPresets(){
+  try{ return JSON.parse(localStorage.getItem('promptforge_presets') || '{}'); }
+  catch{ return {}; }
+}
+function setPresets(p){ localStorage.setItem('promptforge_presets', JSON.stringify(p)); }
+
+function savePreset(){
+  const name = document.getElementById('presetName').value.trim();
+  if(!name) return;
+  const presets = getPresets();
+  presets[name] = {
+    subject: document.getElementById('f_subject').value,
+    style: document.getElementById('f_style').value,
+    medium: document.getElementById('f_medium').value,
+    lighting: document.getElementById('f_lighting').value,
+    comp: document.getElementById('f_comp').value,
+    quality: document.getElementById('f_quality').value,
+    background: document.getElementById('f_background').value,
+    negative: document.getElementById('f_negative').value,
+    hasChar: document.getElementById('f_hasChar').checked,
+    gender: document.getElementById('f_gender').value,
+    age: document.getElementById('f_age').value,
+    locks: {...locks},
+    syntaxMode
+  };
+  setPresets(presets);
+  document.getElementById('presetName').value = '';
+  renderPresets();
+}
+
+function loadPreset(name){
+  const p = getPresets()[name];
+  if(!p) return;
+  document.getElementById('f_subject').value = p.subject;
+  document.getElementById('f_style').value = p.style;
+  document.getElementById('f_medium').value = p.medium;
+  document.getElementById('f_lighting').value = p.lighting;
+  document.getElementById('f_comp').value = p.comp;
+  document.getElementById('f_quality').value = p.quality;
+  document.getElementById('f_background').value = p.background || '';
+  document.getElementById('f_negative').value = p.negative;
+  document.getElementById('f_hasChar').checked = !!p.hasChar;
+  document.getElementById('charOptions').style.display = p.hasChar ? 'flex' : 'none';
+  document.getElementById('f_gender').value = p.gender || '';
+  document.getElementById('f_age').value = p.age || '';
+  if(p.locks){
+    Object.keys(locks).forEach(k=>{ locks[k] = !!p.locks[k]; });
+    document.querySelectorAll('.lockbox').forEach(cb=>{
+      cb.checked = !!locks[cb.dataset.field];
+      cb.closest('.lock-toggle').classList.toggle('locked', cb.checked);
+    });
+  }
+  syntaxMode = p.syntaxMode || 'tags';
+  document.querySelectorAll('#syntaxToggle button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.v === syntaxMode);
+  });
+  buildPrompt();
+}
+
+function deletePreset(name){
+  const presets = getPresets();
+  delete presets[name];
+  setPresets(presets);
+  renderPresets();
+}
+
+function renderPresets(){
+  const presets = getPresets();
+  const el = document.getElementById('presetList');
+  el.innerHTML = '';
+  Object.keys(presets).forEach(name=>{
+    const row = document.createElement('div');
+    row.style.marginBottom = '6px';
+    row.innerHTML = `<span class="tag" style="cursor:pointer;">${name}</span>`;
+    row.querySelector('.tag').onclick = ()=>loadPreset(name);
+    const del = document.createElement('button');
+    del.className = 'btn secondary';
+    del.style.padding = '2px 8px';
+    del.style.fontSize = '10px';
+    del.textContent = '×';
+    del.onclick = ()=>deletePreset(name);
+    row.appendChild(del);
+    el.appendChild(row);
+  });
+}
+
+// ---------- multi-prompt segments ----------
+function getSegments(){
+  try{ return JSON.parse(localStorage.getItem('promptforge_segments') || '[]'); }
+  catch{ return []; }
+}
+function setSegments(s){ localStorage.setItem('promptforge_segments', JSON.stringify(s)); }
+
+function addSegment(){
+  const positive = document.getElementById('posOutput').innerText;
+  const negative = document.getElementById('negOutput').innerText;
+  if(!positive || !positive.trim() || positive.includes('Fill in fields')){
+    return; // nothing built yet — silently no-op rather than adding an empty segment
+  }
+  const labelInput = document.getElementById('segmentLabel');
+  const segments = getSegments();
+  const label = labelInput.value.trim() || `Segment ${segments.length + 1}`;
+  segments.push({ id: Date.now() + Math.random(), label, positive, negative });
+  setSegments(segments);
+  labelInput.value = '';
+  renderSegments();
+}
+
+function moveSegment(id, dir){
+  const segments = getSegments();
+  const idx = segments.findIndex(s => s.id === id);
+  const swapWith = idx + dir;
+  if(idx === -1 || swapWith < 0 || swapWith >= segments.length) return;
+  [segments[idx], segments[swapWith]] = [segments[swapWith], segments[idx]];
+  setSegments(segments);
+  renderSegments();
+}
+
+function removeSegment(id){
+  setSegments(getSegments().filter(s => s.id !== id));
+  renderSegments();
+}
+
+function clearSegments(){
+  if(!confirm('Delete all saved segments? This cannot be undone.')) return;
+  localStorage.removeItem('promptforge_segments');
+  renderSegments();
+}
+
+function combineSegments(){
+  const segments = getSegments();
+  if(segments.length === 0) return;
+  const sepSelect = document.getElementById('segmentSeparator').value;
+  const separator = sepSelect === 'custom' ? document.getElementById('segmentCustomSep').value : sepSelect;
+
+  const combinedPositive = segments.map(s => s.positive).join(separator);
+  const negatives = [...new Set(segments.map(s => s.negative).filter(Boolean))];
+  const combinedNegative = negatives.join(', ');
+
+  const posBox = document.getElementById('posOutput');
+  posBox.contentEditable = true;
+  posBox.innerText = combinedPositive;
+  document.getElementById('negOutput').innerText = combinedNegative;
+
+  pushHistory(combinedPositive, combinedNegative);
+}
+
+function renderSegments(){
+  const segments = getSegments();
+  const el = document.getElementById('segmentList');
+  el.innerHTML = '';
+  if(segments.length === 0){
+    el.innerHTML = '<p class="hint" style="padding-left:0;">No segments yet — build a prompt above and click "Add current build".</p>';
+    return;
+  }
+  segments.forEach((seg, i)=>{
+    const row = document.createElement('div');
+    row.style.cssText = 'margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid var(--border);';
+    const label = document.createElement('div');
+    label.style.cssText = 'font-family:var(--mono); font-size:11px; color:var(--accent); margin-bottom:3px;';
+    label.textContent = `${i + 1}. ${seg.label}`;
+    const preview = document.createElement('div');
+    preview.style.cssText = 'font-family:var(--mono); font-size:12px; margin-bottom:6px;';
+    preview.textContent = seg.positive.length > 80 ? seg.positive.slice(0, 80) + '…' : seg.positive;
+    const btnRow = document.createElement('div');
+    btnRow.className = 'btn-row';
+    btnRow.style.paddingLeft = '0';
+    const mkBtn = (label, fn, disabled)=>{
+      const b = document.createElement('button');
+      b.className = 'btn secondary';
+      b.style.cssText = 'padding:3px 10px; font-size:10px;';
+      b.textContent = label;
+      b.disabled = !!disabled;
+      b.onclick = fn;
+      return b;
+    };
+    btnRow.appendChild(mkBtn('↑', ()=>moveSegment(seg.id, -1), i === 0));
+    btnRow.appendChild(mkBtn('↓', ()=>moveSegment(seg.id, 1), i === segments.length - 1));
+    btnRow.appendChild(mkBtn('Remove', ()=>removeSegment(seg.id)));
+    row.appendChild(label);
+    row.appendChild(preview);
+    row.appendChild(btnRow);
+    el.appendChild(row);
+  });
+}
+
+// ---------- prompt history ----------
+function getHistory(){
+  try{ return JSON.parse(localStorage.getItem('promptforge_history') || '[]'); }
+  catch{ return []; }
+}
+function setHistory(h){ localStorage.setItem('promptforge_history', JSON.stringify(h)); }
+
+function pushHistory(positive, negative){
+  if(!positive || !positive.trim() || positive.includes('Fill in fields')) return;
+  const history = getHistory();
+  if(history.length && history[0].positive === positive && history[0].negative === negative) return; // skip exact repeat
+  history.unshift({ id: Date.now() + Math.random(), ts: new Date().toISOString(), positive, negative, syntaxMode });
+  if(history.length > 50) history.length = 50;
+  setHistory(history);
+  renderHistory();
+  updateWordCount();
+  saveDraft();
+  if(document.getElementById('bridgeAutoPush').checked) pushToBridge(false, positive, negative);
+}
+
+async function pushToBridge(manual, positiveOverride, negativeOverride){
+  const statusEl = document.getElementById('bridgeStatus');
+  const raw = document.getElementById('bridgeUrl').value.trim();
+  let base;
+  try{ base = new URL(raw).origin; }
+  catch{ if(manual){ statusEl.className='status err'; statusEl.textContent='Bridge URL is not valid.'; } return; }
+
+  const positive = positiveOverride !== undefined ? positiveOverride : document.getElementById('posOutput').innerText;
+  const negative = negativeOverride !== undefined ? negativeOverride : document.getElementById('negOutput').innerText;
+  if(manual){ statusEl.className='status'; statusEl.textContent='Pushing...'; }
+
+  try{
+    const res = await fetch(base + '/set_prompt', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ positive, negative })
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    localStorage.setItem('promptforge_bridge_url', raw);
+    if(manual){ statusEl.className='status ok'; statusEl.textContent='Pushed to bridge.'; }
+  } catch(err){
+    // silent on auto-push (don't spam status on every keystroke-triggered build); loud on manual push
+    if(manual){
+      statusEl.className = 'status err';
+      statusEl.textContent = isNetworkError(err)
+        ? 'Failed to fetch — is promptforge_bridge.py running on this port?'
+        : 'Error: ' + err.message;
+    }
+    console.error('bridge push failed:', err);
+  }
+}
+
+function loadHistoryEntry(id){
+  const entry = getHistory().find(h => h.id === id);
+  if(!entry) return;
+  syntaxMode = entry.syntaxMode || syntaxMode;
+  document.querySelectorAll('#syntaxToggle button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.v === syntaxMode);
+  });
+  const posBox = document.getElementById('posOutput');
+  posBox.contentEditable = true;
+  posBox.innerText = entry.positive;
+  document.getElementById('negOutput').innerText = entry.negative;
+  updateWordCount();
+  saveDraft();
+}
+
+function deleteHistoryEntry(id){
+  setHistory(getHistory().filter(h => h.id !== id));
+  renderHistory();
+}
+
+function clearHistory(){
+  if(!confirm('Delete all prompt history? This cannot be undone.')) return;
+  localStorage.removeItem('promptforge_history');
+  renderHistory();
+}
+
+function renderHistory(){
+  const history = getHistory();
+  const el = document.getElementById('historyList');
+  el.innerHTML = '';
+  if(history.length === 0){
+    el.innerHTML = '<p class="hint" style="padding-left:0;">No history yet — build a prompt to start logging.</p>';
+    return;
+  }
+  history.slice(0, 20).forEach(entry=>{
+    const row = document.createElement('div');
+    row.style.marginBottom = '10px';
+    row.style.paddingBottom = '8px';
+    row.style.borderBottom = '1px solid var(--border)';
+    const time = new Date(entry.ts).toLocaleString();
+    const preview = entry.positive.length > 80 ? entry.positive.slice(0, 80) + '…' : entry.positive;
+    const meta = document.createElement('div');
+    meta.style.cssText = 'font-family:var(--mono); font-size:10px; color:var(--muted); margin-bottom:4px;';
+    meta.textContent = `${time} · ${entry.syntaxMode}`;
+    const text = document.createElement('div');
+    text.style.cssText = 'font-family:var(--mono); font-size:12px; margin-bottom:6px;';
+    text.textContent = preview;
+    const btnRow = document.createElement('div');
+    btnRow.className = 'btn-row';
+    btnRow.style.paddingLeft = '0';
+    const loadBtn = document.createElement('button');
+    loadBtn.className = 'btn secondary';
+    loadBtn.style.cssText = 'padding:3px 10px; font-size:10px;';
+    loadBtn.textContent = 'Load';
+    loadBtn.onclick = ()=>loadHistoryEntry(entry.id);
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn secondary';
+    delBtn.style.cssText = 'padding:3px 10px; font-size:10px;';
+    delBtn.textContent = 'Delete';
+    delBtn.onclick = ()=>deleteHistoryEntry(entry.id);
+    btnRow.appendChild(loadBtn);
+    btnRow.appendChild(delBtn);
+    row.appendChild(meta);
+    row.appendChild(text);
+    row.appendChild(btnRow);
+    el.appendChild(row);
+  });
+}
+
+// ---------- ComfyUI automation ----------
+let comfyWorkflowObj = null;
+let comfyClientId = null;
+try{ comfyClientId = localStorage.getItem('promptforge_comfy_client_id') || crypto.randomUUID(); }
+catch{ comfyClientId = 'promptforge-' + Date.now(); }
+localStorage.setItem('promptforge_comfy_client_id', comfyClientId);
+
+function parseComfyWorkflow(){
+  const statusEl = document.getElementById('comfyStatus');
+  const raw = document.getElementById('comfyWorkflow').value.trim();
+  if(!raw){ statusEl.className = 'status err'; statusEl.textContent = 'Paste a workflow JSON first.'; return; }
+  let obj;
+  try{ obj = JSON.parse(raw); }
+  catch(e){ statusEl.className = 'status err'; statusEl.textContent = 'Invalid JSON: ' + e.message; return; }
+
+  const candidates = Object.entries(obj).filter(([id, node]) =>
+    node && typeof node === 'object' && node.inputs && typeof node.inputs.text === 'string'
+  );
+  if(candidates.length === 0){
+    statusEl.className = 'status err';
+    statusEl.textContent = 'No text-input nodes found — make sure this is an API-format export (Workflow → Export (API)), not the regular workflow export.';
+    return;
+  }
+
+  comfyWorkflowObj = obj;
+  const posSelect = document.getElementById('comfyPosNode');
+  const negSelect = document.getElementById('comfyNegNode');
+  posSelect.innerHTML = '';
+  negSelect.innerHTML = '<option value="">None</option>';
+  candidates.forEach(([id, node])=>{
+    const label = `${id} · ${node._meta?.title || node.class_type} — "${node.inputs.text.slice(0, 30)}"`;
+    posSelect.appendChild(new Option(label, id));
+    negSelect.appendChild(new Option(label, id));
+  });
+
+  document.getElementById('comfyNodeSelectRow').style.display = 'flex';
+  statusEl.className = 'status ok';
+  statusEl.textContent = `Found ${candidates.length} text node(s). Pick which is positive/negative below.`;
+
+  localStorage.setItem('promptforge_comfy_workflow', raw);
+  localStorage.setItem('promptforge_comfy_url', document.getElementById('comfyUrl').value.trim());
+}
+
+async function sendToComfyUI(){
+  const statusEl = document.getElementById('comfyStatus');
+  if(!comfyWorkflowObj){ statusEl.className = 'status err'; statusEl.textContent = 'Parse a workflow first.'; return; }
+  const posId = document.getElementById('comfyPosNode').value;
+  const negId = document.getElementById('comfyNegNode').value;
+  if(!posId){ statusEl.className = 'status err'; statusEl.textContent = 'Select a positive prompt node.'; return; }
+
+  let base;
+  try{ base = new URL(document.getElementById('comfyUrl').value.trim()).origin; }
+  catch{ statusEl.className = 'status err'; statusEl.textContent = 'ComfyUI base URL is not valid.'; return; }
+
+  const clone = JSON.parse(JSON.stringify(comfyWorkflowObj));
+  clone[posId].inputs.text = document.getElementById('posOutput').innerText;
+  if(negId) clone[negId].inputs.text = document.getElementById('negOutput').innerText;
+
+  statusEl.className = 'status';
+  statusEl.textContent = 'Sending...';
+  try{
+    const res = await fetch(base + '/prompt', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ prompt: clone, client_id: comfyClientId })
+    });
+    if(!res.ok){
+      const errText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errText.slice(0, 200)}`);
+    }
+    const data = await res.json();
+    statusEl.className = 'status ok';
+    statusEl.textContent = `Queued — prompt_id ${data.prompt_id}`;
+  } catch(err){
+    statusEl.className = 'status err';
+    if(isNetworkError(err)){
+      statusEl.textContent = 'Failed to fetch — start ComfyUI with --enable-cors-header "*", and confirm the URL/port.';
+    } else {
+      statusEl.textContent = 'Error: ' + err.message;
+    }
+    console.error(err);
+  }
+}
+
+// restore comfy config on load
+(function initComfy(){
+  const savedUrl = localStorage.getItem('promptforge_comfy_url');
+  const savedWorkflow = localStorage.getItem('promptforge_comfy_workflow');
+  if(savedUrl) document.getElementById('comfyUrl').value = savedUrl;
+  if(savedWorkflow){
+    document.getElementById('comfyWorkflow').value = savedWorkflow;
+    parseComfyWorkflow();
+  }
+  const savedBridgeUrl = localStorage.getItem('promptforge_bridge_url');
+  if(savedBridgeUrl) document.getElementById('bridgeUrl').value = savedBridgeUrl;
+})();
+
+// ---------- draft autosave/restore ----------
+const DRAFT_FIELD_IDS = ['f_subject','f_style','f_medium','f_lighting','f_comp','f_quality','f_background','f_negative','f_theme'];
+
+function saveDraft(){
+  const draft = {};
+  DRAFT_FIELD_IDS.forEach(id=>{ draft[id] = document.getElementById(id).value; });
+  draft.hasChar = document.getElementById('f_hasChar').checked;
+  draft.gender = document.getElementById('f_gender').value;
+  draft.age = document.getElementById('f_age').value;
+  draft.syntaxMode = syntaxMode;
+  draft.positiveOutput = document.getElementById('posOutput').innerText;
+  draft.negativeOutput = document.getElementById('negOutput').innerText;
+  localStorage.setItem('promptforge_draft', JSON.stringify(draft));
+}
+
+function restoreDraft(){
+  let draft;
+  try{ draft = JSON.parse(localStorage.getItem('promptforge_draft')); }
+  catch{ return; }
+  if(!draft) return;
+
+  DRAFT_FIELD_IDS.forEach(id=>{
+    if(draft[id] !== undefined) document.getElementById(id).value = draft[id];
+  });
+  document.getElementById('f_hasChar').checked = !!draft.hasChar;
+  document.getElementById('charOptions').style.display = draft.hasChar ? 'flex' : 'none';
+  document.getElementById('f_gender').value = draft.gender || '';
+  document.getElementById('f_age').value = draft.age || '';
+  syntaxMode = draft.syntaxMode || syntaxMode;
+  document.querySelectorAll('#syntaxToggle button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.v === syntaxMode);
+  });
+
+  if(draft.positiveOutput && !draft.positiveOutput.includes('Fill in fields')){
+    const posBox = document.getElementById('posOutput');
+    posBox.contentEditable = true;
+    posBox.innerText = draft.positiveOutput;
+    document.getElementById('negOutput').innerText = draft.negativeOutput || '';
+    updateWordCount();
+  }
+}
+
+// Autosave on every keystroke in a draft field, not just on Build — so a refresh
+// mid-typing doesn't lose work that was never explicitly built.
+DRAFT_FIELD_IDS.forEach(id=>{
+  document.getElementById(id).addEventListener('input', saveDraft);
+});
+document.getElementById('f_hasChar').addEventListener('change', saveDraft);
+document.getElementById('f_gender').addEventListener('change', saveDraft);
+document.getElementById('f_age').addEventListener('change', saveDraft);
+
+// ---------- backup & restore ----------
+function exportBackup(){
+  const backup = {
+    presets: getPresets(),
+    history: getHistory(),
+    segments: getSegments(),
+    comfy_url: localStorage.getItem('promptforge_comfy_url') || '',
+    comfy_workflow: localStorage.getItem('promptforge_comfy_workflow') || '',
+    bridge_url: localStorage.getItem('promptforge_bridge_url') || '',
+    draft: (()=>{ try{ return JSON.parse(localStorage.getItem('promptforge_draft')); } catch{ return null; } })(),
+    exported_at: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `promptforge-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importBackup(event){
+  const file = event.target.files[0];
+  const statusEl = document.getElementById('backupStatus');
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      if(data.presets) setPresets(data.presets);
+      if(data.history) setHistory(data.history);
+      if(data.segments) setSegments(data.segments);
+      if(data.comfy_url) localStorage.setItem('promptforge_comfy_url', data.comfy_url);
+      if(data.comfy_workflow) localStorage.setItem('promptforge_comfy_workflow', data.comfy_workflow);
+      if(data.bridge_url) localStorage.setItem('promptforge_bridge_url', data.bridge_url);
+      if(data.draft) localStorage.setItem('promptforge_draft', JSON.stringify(data.draft));
+      renderPresets();
+      renderHistory();
+      renderSegments();
+      statusEl.className = 'status ok';
+      statusEl.textContent = 'Backup imported. Reload the page to fully apply the restored draft, workflow, and bridge settings.';
+    } catch(e){
+      statusEl.className = 'status err';
+      statusEl.textContent = 'Invalid backup file: ' + e.message;
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+renderHistory();
+renderSegments();
+renderPresets();
+restoreDraft();
+</script>
+</body>
+</html>
