@@ -49,8 +49,3 @@ tool. Check your server's own docs for its CORS setting. For Ollama specifically
 the `OLLAMA_ORIGINS` environment variable, set before the server starts, with a
 full process restart afterward (not just closing a terminal window, if it also
 runs as a background/tray app).
-
-## Known-working reference config (Krea 2 Turbo)
-
-`simple` scheduler, ER_SDE sampler, CFG ~2.5, ~16 steps. A documented starting
-point, not a hard recommendation — tune to taste.
