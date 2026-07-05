@@ -14,18 +14,7 @@ There are three independent components. You only need the first one — the
 other two are optional, for optional features.
 
 ```
-┌─────────────────┐         ┌──────────────────┐         ┌─────────────────┐
-│  prompt-forge    │ push  │  promptforge_     │ pull  │  ComfyUI node   │
-│  .html           │──────▶│  bridge.py         │◀──────│  (prompt-bridge- │
-│  (open in your   │       │  (tiny local relay,│       │  forge folder)  │
-│  browser)        │       │  keep running)      │       │  live in your   │
-│                  │       │                     │       │  ComfyUI graph  │
-└─────────────────┘         └──────────────────┘         └─────────────────┘
-        │
-        │ optional: calls a local LLM (Ollama/LM Studio/etc.)
-        │ or the Anthropic API, to draft/expand prompts for you
-        ▼
-  your LLM backend
+![Architecture diagram: ...](architecture.png)
 ```
 
 - **`prompt-forge.html`** — the tool itself. This is all you need to build
