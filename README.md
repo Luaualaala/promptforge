@@ -9,11 +9,8 @@ ComfyUI, done.
 
 ## Folder layout
 
-```
+assets/prompt_forge_architecture.png
 
-
-
-```
 
 **Important:** `prompt-forge.html` loads its compiler from
 `prompt-bridge-forge/js/` — keep the folder together. If you move the HTML
