@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Prompt Forge — panel test harness (mock ComfyUI)</title>
+<style>body{background:#14161a; color:#ccc; font-family:monospace; padding:20px;}</style>
+</head>
+<body>
+<h3>Prompt Forge panel harness — mocks the ComfyUI frontend API</h3>
+<p>Open from the repo root server: /tests/panel_harness.html</p>
+<pre id="log"></pre>
+<script type="module">
+const log = (m)=>{ document.getElementById('log').textContent += m + "\n"; console.log(m); };
+
+// ---- mock LiteGraph / app -------------------------------------------------
+let nextId = 1;
+function makeComposerNode(){
+  return {
+    id: null,
+    comfyClass: 'PromptForgeComposer',
+    type: 'PromptForgeComposer',
+    title: 'Prompt Forge Composer',
+    pos: [0,0],
+    widgets: [
+      {name:'state_json', value:''},
+      {name:'compiled_positive', value:''},
+      {name:'compiled_negative', value:''},
+      {name:'forced_positive', value:''},
+      {name:'forced_negative', value:''},
+      {name:'forced_position', value:'prepend'},
+      {name:'metadata_json', value:''},
+    ],
+    outputs: [{links:[1]},{links:[]}],
+    setDirtyCanvas(){ this._dirty = true; },
+  };
+}
+function makeEncoderNode(title){
+  return {
+    id: null, comfyClass: 'CLIPTextEncode', type: 'CLIPTextEncode', title,
+    widgets: [{name:'text', value:''}],
+    outputs: [], setDirtyCanvas(){},
+  };
+}
+const graph = {
+  _nodes: [],
+  add(node){ node.id = nextId++; this._nodes.push(node); },
+  getNodeById(id){ return this._nodes.find(n=>n.id===id) || null; },
+  setDirtyCanvas(){},
+};
+window.LiteGraph = { createNode(cls){ return cls==='PromptForgeComposer' ? makeComposerNode() : null; } };
+const encoderA = makeEncoderNode('CLIP positive'); graph.add(encoderA);
+const encoderB = makeEncoderNode('CLIP negative'); graph.add(encoderB);
+
+window.__mockApp = {
+  graph,
+  canvas: null,
+  menu: null,
+  extensions: [],
+  registerExtension(ext){ this.extensions.push(ext); },
+};
+
+// ---- load the real panel module with the app import swapped for the mock ---
+const src = await (await fetch('../prompt-bridge-forge/js/promptforge_panel.js')).text();
+const baseUrl = new URL('../prompt-bridge-forge/js/', location.href).href;
+const mocked = src
+  .replace('import { app } from "/scripts/app.js";', 'const app = window.__mockApp;')
+  .replace('const base = new URL(".", import.meta.url);', `const base = new URL(${JSON.stringify(baseUrl)});`);
+const blobUrl = URL.createObjectURL(new Blob([mocked], {type:'text/javascript'}));
+await import(blobUrl);
+log('panel module loaded, extensions registered: ' + window.__mockApp.extensions.length);
+
+// run setup() like ComfyUI would
+await window.__mockApp.extensions[0].setup();
+log('setup() completed. PromptForge core loaded: ' + !!window.PromptForge?.compilePromptForgeState);
+window.__harnessReady = true;
+</script>
+</body>
+</html>
