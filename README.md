@@ -1,4 +1,4 @@
-# Prompt Forge — Revised (v2, "prompt cockpit")
+# Prompt Forge — Revised 
 
 Prompt Forge turned from a single prompt form into a small control room for
 image prompting: scenes on rails, model profiles, a linter, and a native
@@ -9,23 +9,10 @@ ComfyUI, done.
 
 ## Folder layout
 
-```text
-prompt-forge.html                 standalone browser cockpit (open directly)
-promptforge_bridge.py             local relay server (v1-compatible + /set_state)
-prompt-bridge-forge/              ComfyUI custom node package — copy into custom_nodes/
-  __init__.py                     PromptForgeBridge (unchanged) + PromptForgeComposer (new)
-  js/
-    promptforge_state.js          shared core: state schema v2, validation, migration
-    promptforge_profiles.js       shared core: model profiles + registry hooks
-    promptforge_compiler.js       shared core: state -> prompt compiler (canonical)
-    promptforge_linter.js         shared core: linter + negative cleaner
-    promptforge_panel.js          ComfyUI frontend panel (new)
-    promptforge_ui.css            panel styles
-    promptforge_live.js           v1 live bridge polling (unchanged)
-tests/
-  run_tests.js                    core test suite — node tests/run_tests.js
-  test_composer.py                node tests + JS/Python parity — python tests/test_composer.py
-  panel_harness.html              panel smoke test against a mock ComfyUI frontend
+```
+
+
+
 ```
 
 **Important:** `prompt-forge.html` loads its compiler from
