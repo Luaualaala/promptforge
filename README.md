@@ -9,7 +9,7 @@ ComfyUI, done.
 
 ## Folder layout
 
-assets/prompt_forge_architecture.png
+assets/Arch.png
 
 
 **Important:** `prompt-forge.html` loads its compiler from
