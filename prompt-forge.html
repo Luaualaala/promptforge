@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>PROMPT.FORGE — local SD/Flux prompt builder</title>
+<title>PROMPT.FORGE — prompt cockpit (v2)</title>
 <style>
   :root{
     --bg:#14161a;
@@ -15,101 +15,99 @@
     --accent-dim:#3d7a72;
     --warn:#d98c4a;
     --warn-dim:#8f5c2e;
+    --bad:#d96a6a;
+    --good:#6fbf6f;
     --mono:'IBM Plex Mono','Courier New',monospace;
     --sans:'IBM Plex Sans','Segoe UI',sans-serif;
+    --pad:16px;
+    --font-size:13.5px;
   }
+  body.density-compact{ --pad:9px; --font-size:12.5px; }
+  body.density-ultra{ --pad:5px; --font-size:11.5px; }
   *{box-sizing:border-box;}
   body{
-    margin:0;
-    background:var(--bg);
-    color:var(--text);
-    font-family:var(--sans);
-    min-height:100vh;
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--sans); min-height:100vh; font-size:var(--font-size);
   }
   header{
-    padding:22px 28px 16px;
-    border-bottom:1px solid var(--border);
-    display:flex;
-    align-items:baseline;
-    gap:14px;
-    flex-wrap:wrap;
+    padding:16px 28px 12px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
   }
-  header h1{
-    font-family:var(--mono);
-    font-size:19px;
-    letter-spacing:0.08em;
-    margin:0;
-    color:var(--text);
-  }
+  header h1{font-family:var(--mono); font-size:19px; letter-spacing:.08em; margin:0;}
   header h1 span{color:var(--accent);}
-  header p{
-    margin:0;
-    color:var(--muted);
-    font-size:13px;
+  header p{margin:0; color:var(--muted); font-size:12px; flex:1;}
+  .pill{
+    font-family:var(--mono); font-size:11px; padding:4px 12px; border-radius:12px;
+    border:1px solid var(--border); background:var(--panel); cursor:pointer;
+    user-select:none; white-space:nowrap;
   }
-  .layout{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:1px;
-    background:var(--border);
+  .pill.good{border-color:var(--accent); color:var(--accent);}
+  .pill.mid{border-color:var(--warn); color:var(--warn);}
+  .pill.bad{border-color:var(--bad); color:var(--bad);}
+
+  /* ---------- scene bar ---------- */
+  #sceneBar{
+    display:flex; align-items:center; gap:6px; padding:10px 28px;
+    border-bottom:1px solid var(--border); flex-wrap:wrap; background:var(--panel);
   }
-  @media(max-width:880px){ .layout{grid-template-columns:1fr;} }
-  .col{background:var(--bg); padding:24px 28px 60px; position:relative;}
-  .col::before{
-    content:"";
-    position:absolute; left:14px; top:0; bottom:0; width:1px;
-    background:var(--border);
+  .scene-tab{
+    font-family:var(--mono); font-size:12px; padding:6px 12px; border-radius:4px;
+    border:1px solid var(--border); background:var(--panel2); cursor:pointer;
+    user-select:none; display:flex; align-items:center; gap:7px; max-width:220px;
   }
-  .field{margin-bottom:16px; padding-left:18px; position:relative;}
-  .field::before{
-    content:"";
-    position:absolute; left:-4px; top:9px;
-    width:7px; height:7px; border-radius:50%;
-    background:var(--accent-dim);
-    border:1px solid var(--accent);
+  .scene-tab .dot{width:7px; height:7px; border-radius:50%; background:var(--muted); flex:0 0 auto;}
+  .scene-tab.on .dot{background:var(--accent);}
+  .scene-tab.off{opacity:.5;}
+  .scene-tab.active{border-color:var(--accent); background:var(--accent-dim);}
+  .scene-tab.global-tab{border-style:dashed;}
+  .scene-tab .nm{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .scene-tab input{
+    background:transparent; border:none; color:var(--text); font-family:var(--mono);
+    font-size:12px; width:110px; outline:none; border-bottom:1px solid var(--accent);
   }
-  .field.neg::before{background:var(--warn-dim); border-color:var(--warn);}
-  label{
-    display:block;
-    font-family:var(--mono);
-    font-size:11px;
-    letter-spacing:0.05em;
-    text-transform:uppercase;
-    color:var(--muted);
-    margin-bottom:5px;
+  #sceneTools{
+    display:flex; gap:6px; align-items:center; padding:8px 28px; flex-wrap:wrap;
+    border-bottom:1px solid var(--border); background:var(--panel);
+    font-family:var(--mono); font-size:11px; color:var(--muted);
   }
-  input[type=text], textarea, select{
-    width:100%;
-    background:var(--panel);
-    border:1px solid var(--border);
-    color:var(--text);
-    padding:8px 10px;
-    border-radius:4px;
-    font-family:var(--sans);
-    font-size:13.5px;
+  .mini-btn{
+    background:var(--panel2); border:1px solid var(--border); color:var(--muted);
+    font-family:var(--mono); font-size:10.5px; padding:3px 9px; border-radius:3px; cursor:pointer;
   }
-  textarea{resize:vertical; font-family:var(--mono); font-size:12.5px;}
-  input:focus, textarea:focus, select:focus{
-    outline:none; border-color:var(--accent);
-  }
-  .row{display:flex; gap:10px;}
-  .row > *{flex:1;}
-  .toggle-group{display:flex; border:1px solid var(--border); border-radius:4px; overflow:hidden; width:fit-content;}
-  .toggle-group button{
-    background:var(--panel); color:var(--muted); border:none; padding:6px 14px;
-    font-family:var(--mono); font-size:11.5px; cursor:pointer; letter-spacing:.03em;
-  }
-  .toggle-group button.active{background:var(--accent-dim); color:var(--text);}
+  .mini-btn:hover{border-color:var(--accent); color:var(--text);}
+  .mini-btn.danger:hover{border-color:var(--bad); color:var(--bad);}
+  .mini-btn:disabled{opacity:.35; cursor:default;}
+  .mini-btn.toggled{border-color:var(--accent); color:var(--accent);}
+
+  .layout{display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--border);}
+  @media(max-width:900px){ .layout{grid-template-columns:1fr;} }
+  .col{background:var(--bg); padding:var(--pad) 28px 60px; position:relative; min-width:0;}
+  .col::before{content:""; position:absolute; left:14px; top:0; bottom:0; width:1px; background:var(--border);}
+
   h2{
-    font-family:var(--mono); font-size:12px; letter-spacing:.08em;
-    text-transform:uppercase; color:var(--muted);
-    margin:26px 0 14px; padding-left:18px;
-    border-bottom:1px solid var(--border); padding-bottom:8px;
+    font-family:var(--mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--muted); margin:22px 0 12px; padding-left:18px;
+    border-bottom:1px solid var(--border); padding-bottom:7px;
+    display:flex; justify-content:space-between; align-items:baseline; gap:8px;
   }
   h2:first-of-type{margin-top:0;}
+  h2 .h2-side{font-size:10px; text-transform:none; letter-spacing:0; color:var(--muted); font-weight:normal;}
+  label{
+    display:block; font-family:var(--mono); font-size:11px; letter-spacing:.05em;
+    text-transform:uppercase; color:var(--muted); margin-bottom:5px;
+  }
+  input[type=text], input[type=number], textarea, select{
+    width:100%; background:var(--panel); border:1px solid var(--border);
+    color:var(--text); padding:7px 9px; border-radius:4px;
+    font-family:var(--sans); font-size:var(--font-size);
+  }
+  textarea{resize:vertical; font-family:var(--mono); font-size:12px;}
+  input:focus, textarea:focus, select:focus{outline:none; border-color:var(--accent);}
+  .row{display:flex; gap:10px;}
+  .row > *{flex:1; min-width:0;}
   .btn{
     background:var(--accent-dim); color:var(--text); border:1px solid var(--accent);
-    padding:9px 16px; border-radius:4px; font-family:var(--mono); font-size:12.5px;
+    padding:8px 15px; border-radius:4px; font-family:var(--mono); font-size:12px;
     cursor:pointer; letter-spacing:.03em;
   }
   .btn:hover{background:var(--accent);}
@@ -118,245 +116,319 @@
   .btn.warn{border-color:var(--warn); background:var(--warn-dim);}
   .btn.warn:hover{background:var(--warn);}
   .btn-row{display:flex; gap:8px; flex-wrap:wrap; padding-left:18px; margin-bottom:8px;}
+  .hint{color:var(--muted); font-size:11px; margin:4px 0 0; padding-left:18px;}
+  .status{font-family:var(--mono); font-size:11px; padding-left:18px; margin-top:6px; min-height:14px;}
+  .status.ok{color:var(--accent);}
+  .status.err{color:var(--warn);}
+
+  /* ---------- field stack ---------- */
+  .fstack{padding-left:18px;}
+  .frow{
+    border:1px solid var(--border); border-radius:5px; background:var(--panel);
+    margin-bottom:8px; padding:7px 9px;
+  }
+  .frow.disabled{opacity:.45;}
+  .frow.neg{border-left:3px solid var(--warn-dim);}
+  .frow.locked-f{border-left:3px solid var(--warn);}
+  .frow-head{display:flex; align-items:center; gap:7px; margin-bottom:6px; flex-wrap:wrap;}
+  .ftype{
+    font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--accent); background:var(--panel2); padding:2px 7px; border-radius:3px;
+    border:1px solid var(--border); flex:0 0 auto;
+  }
+  .frow.neg .ftype{color:var(--warn);}
+  .flabel{font-family:var(--mono); font-size:11px; color:var(--muted); flex:1; min-width:60px;}
+  .fctl{display:flex; gap:4px; align-items:center; flex:0 0 auto;}
+  .fw{width:56px !important; padding:2px 5px !important; font-size:11px !important; font-family:var(--mono) !important;}
+  .frow textarea{width:100%; min-height:34px;}
+  .fnotes{margin-top:6px;}
+  .fnotes textarea{min-height:28px; font-size:11px; color:var(--muted);}
+  .flash{animation:flashfield 1.2s;}
+  @keyframes flashfield{0%{border-color:var(--accent); box-shadow:0 0 8px var(--accent);}100%{}}
+
+  /* ---------- output ---------- */
   .output-box{
     background:var(--panel2); border:1px solid var(--border); border-radius:4px;
     padding:12px; font-family:var(--mono); font-size:12.5px; white-space:pre-wrap;
     min-height:70px; margin-left:18px; word-break:break-word;
   }
-  .output-wrap{margin-bottom:22px;}
+  .output-wrap{margin-bottom:18px;}
   .tag{
     display:inline-block; background:var(--panel); border:1px solid var(--border);
     border-radius:3px; padding:2px 8px; margin:2px 4px 2px 0; font-family:var(--mono);
     font-size:12px; cursor:pointer; user-select:none;
   }
   .tag:hover{border-color:var(--accent);}
-  .tag.w-low{color:var(--muted);}
-  .tag.w-high{color:var(--accent); border-color:var(--accent-dim);}
-  .hint{color:var(--muted); font-size:11px; margin:4px 0 0; padding-left:18px;}
-  .status{
-    font-family:var(--mono); font-size:11px; padding-left:18px; margin-top:6px; min-height:14px;
-  }
-  .status.ok{color:var(--accent);}
-  .status.err{color:var(--warn);}
+  .tag.src-global{border-left:2px solid var(--accent);}
+  .tag.src-scene{border-left:2px solid var(--warn);}
+  .tag.src-external{border-left:2px solid #7a8bd9;}
+  .tag.src-profile{border-left:2px solid var(--muted);}
   .word-count-warn{color:var(--warn) !important;}
-  details{padding-left:18px; margin-bottom:16px;}
-  summary{
-    font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.05em;
-    color:var(--muted); cursor:pointer;
+
+  .lintline{
+    font-family:var(--mono); font-size:11.5px; padding:6px 8px; margin-bottom:5px;
+    border-left:3px solid var(--muted); background:var(--panel); border-radius:0 4px 4px 0;
   }
+  .lintline.warning{border-left-color:var(--warn);}
+  .lintline.info{border-left-color:var(--accent-dim);}
+  .lintline .sug{color:var(--muted); display:block; margin-top:2px;}
+
+  .metric{display:inline-block; font-family:var(--mono); font-size:11px; color:var(--muted);
+    background:var(--panel); border:1px solid var(--border); border-radius:3px;
+    padding:3px 9px; margin:0 5px 5px 0;}
+  .metric b{color:var(--text); font-weight:normal;}
+
+  .negchip{
+    display:inline-block; font-family:var(--mono); font-size:11px; padding:2px 8px;
+    margin:2px 4px 2px 0; border:1px solid var(--border); border-radius:10px;
+    background:var(--panel); color:var(--text);
+  }
+  .negcat{margin-bottom:8px;}
+  .negcat .catname{font-family:var(--mono); font-size:10.5px; text-transform:uppercase;
+    color:var(--muted); cursor:pointer; user-select:none;}
+  .negcat.off .negchip{opacity:.35; text-decoration:line-through;}
+  .negcat .catname input{width:auto; margin-right:5px;}
+
+  .listrow{margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid var(--border);}
+  .listrow .meta{font-family:var(--mono); font-size:10px; color:var(--muted); margin-bottom:3px;}
+  .listrow .txt{font-family:var(--mono); font-size:12px; margin-bottom:6px; word-break:break-word;}
+  .fav{cursor:pointer;}
+  .fav.on{color:var(--warn);}
+
+  details{padding-left:18px; margin-bottom:14px;}
+  summary{font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--muted); cursor:pointer;}
   details[open] summary{margin-bottom:10px;}
-  .field-head{display:flex; justify-content:space-between; align-items:center; gap:10px;}
-  .field-head label:first-child{margin-bottom:0;}
-  .lock-toggle{font-family:var(--mono); font-size:10px; color:var(--muted); cursor:pointer; user-select:none; display:flex; align-items:center; gap:4px; opacity:0.55; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;}
-  .lock-toggle input{cursor:pointer; width:auto; margin:0;}
-  .lock-toggle.locked{opacity:1; color:var(--warn);}
+
+  .diffadd{color:var(--good);}
+  .diffrem{color:var(--bad); text-decoration:line-through;}
+
+  /* ---------- overlays ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(10,12,15,.75); z-index:50;
+    display:none; align-items:flex-start; justify-content:center; padding-top:8vh;
+  }
+  .overlay.open{display:flex;}
+  .overlay-panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:6px;
+    width:min(680px, 92vw); max-height:78vh; overflow-y:auto; padding:18px;
+  }
+  #paletteInput{margin-bottom:10px;}
+  .pal-item{font-family:var(--mono); font-size:12px; padding:7px 10px; border-radius:4px; cursor:pointer;}
+  .pal-item.sel{background:var(--accent-dim);}
+  .banner{
+    background:var(--warn-dim); border-bottom:1px solid var(--warn); padding:8px 28px;
+    font-family:var(--mono); font-size:12px; display:none; align-items:center; gap:12px;
+  }
+  .banner.show{display:flex;}
+  #toast{
+    position:fixed; bottom:18px; right:18px; background:var(--panel); border:1px solid var(--accent);
+    color:var(--text); font-family:var(--mono); font-size:12px; padding:9px 14px;
+    border-radius:4px; z-index:99; display:none; max-width:360px;
+  }
 </style>
 </head>
 <body>
 
 <header>
   <h1>PROMPT<span>.</span>FORGE</h1>
-  <p>local prompt builder — Danbooru / natural-language, SDXL / Flux / ComfyUI</p>
+  <p>prompt cockpit — scenes · profiles · linter · ComfyUI &nbsp;·&nbsp; <span style="color:var(--accent);">Ctrl+K</span> commands</p>
+  <span class="pill" id="healthPill" title="Click for details" onclick="scrollToLint()">Health: —</span>
+  <span class="pill" id="densityPill" onclick="cycleDensity()" title="UI density">density: comfortable</span>
 </header>
+
+<div class="banner" id="migrateBanner">
+  <span id="migrateBannerText">Recovered data from a previous Prompt Forge version.</span>
+  <button class="mini-btn" onclick="document.getElementById('migrateBanner').classList.remove('show')">Dismiss</button>
+</div>
+<div class="banner" id="coreErrorBanner">
+  Core scripts failed to load. Keep prompt-forge.html together with the
+  prompt-bridge-forge/js/ folder — this file loads its compiler from there.
+</div>
+
+<div id="sceneBar"></div>
+<div id="sceneTools"></div>
 
 <div class="layout">
 
-  <!-- LEFT: BUILDER -->
+  <!-- ================= LEFT: BUILDER ================= -->
   <div class="col">
-    <h2>Prompt fields</h2>
 
-    <div class="field">
-      <div class="field-head">
-        <label>Subject</label>
-        <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="subject"> lock</label>
-      </div>
-      <input type="text" id="f_subject" placeholder="silver hair, red eyes">
+    <h2>Fields <span class="h2-side" id="tabLabel"></span></h2>
+    <div class="fstack" id="fieldStack"></div>
+    <div class="btn-row" style="margin-top:4px;">
+      <select id="addFieldType" style="max-width:170px;"></select>
+      <button class="btn secondary" onclick="addFieldToTab(false)">+ Add field</button>
+      <button class="btn secondary" onclick="pasteToFields()" title="Paste a big prompt, split into fields by comma groups">Paste prompt → fields</button>
     </div>
-    <div class="field">
-      <div class="field-head">
-        <label><input type="checkbox" id="f_hasChar" style="width:auto; vertical-align:middle; margin-right:6px;">Has a character</label>
-        <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="character"> lock</label>
-      </div>
-      <div class="row" id="charOptions" style="display:none; margin-top:6px;">
-        <div style="flex:1;">
-          <select id="f_gender">
-            <option value="">Gender — unspecified</option>
-            <option value="female">Female</option>
-            <option value="male">Male</option>
-            <option value="nonbinary">Non-binary / androgynous</option>
-          </select>
-        </div>
-        <div style="flex:1;">
-          <select id="f_age">
-            <option value="">Age — unspecified</option>
-            <option value="young_adult">Young adult</option>
-            <option value="adult">Adult</option>
-            <option value="middle_aged">Middle-aged</option>
-            <option value="elderly">Elderly</option>
-          </select>
-        </div>
-      </div>
+
+    <h2>Negative fields <span class="h2-side">this tab</span></h2>
+    <div class="fstack" id="negFieldStack"></div>
+    <div class="btn-row" style="margin-top:4px;">
+      <button class="btn secondary" onclick="addFieldToTab(true)">+ Add negative field</button>
     </div>
-    <div class="field">
-      <div class="field-head">
-        <label>Style / character refs</label>
-        <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="style"> lock</label>
-      </div>
+    <div class="fstack" style="margin-top:8px;">
+      <label style="text-transform:none;">
+        <input type="checkbox" id="safetyNsfw" style="width:auto; vertical-align:middle; margin-right:6px;">
+        Exposure control — adds "nsfw, nude, explicit" to negatives (visible toggle, never hidden)
+      </label>
+      <label style="text-transform:none;">
+        <input type="checkbox" id="safetyGore" style="width:auto; vertical-align:middle; margin-right:6px;">
+        Gore control — adds "blood, injury, gore" to negatives
+      </label>
+    </div>
+
+    <h2>Model profile &amp; output</h2>
+    <div class="fstack">
       <div class="row">
-        <input type="text" id="f_style" placeholder="ghibli style, cel shaded" style="flex:2;">
-        <select id="f_stylePreset" style="flex:1;" onchange="applyStylePreset()">
-          <option value="">Quick style...</option>
-          <option value="anime, cel shaded">Anime / cel-shaded</option>
-          <option value="photorealistic, 35mm film">Photorealistic</option>
-          <option value="oil painting, painterly">Oil painting</option>
-          <option value="watercolor">Watercolor</option>
-          <option value="3d render, octane render">3D render</option>
-          <option value="cyberpunk, neon-lit">Cyberpunk</option>
-          <option value="ukiyo-e woodblock">Ukiyo-e</option>
-          <option value="pixel art">Pixel art</option>
-          <option value="gothic, dark fantasy">Gothic / dark fantasy</option>
-          <option value="film noir, high contrast">Film noir</option>
+        <div>
+          <label>Model profile</label>
+          <select id="selProfile"></select>
+        </div>
+        <div>
+          <label>Output mode</label>
+          <select id="selOutputMode">
+            <option value="single">Single (active scene)</option>
+            <option value="scenes_joined">All scenes joined</option>
+            <option value="break_blocks">Scene blocks with BREAK</option>
+          </select>
+        </div>
+        <div>
+          <label>Scene joiner</label>
+          <select id="selJoiner">
+            <option value="comma">Comma</option>
+            <option value="newline">Newline</option>
+            <option value="BREAK">BREAK</option>
+            <option value="custom">Custom…</option>
+          </select>
+          <input type="text" id="joinerCustom" placeholder="custom joiner" style="display:none; margin-top:5px;">
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div>
+          <label>Negative severity</label>
+          <select id="selSeverity">
+            <option value="off">Off (only my text)</option>
+            <option value="minimal">Minimal</option>
+            <option value="normal">Normal</option>
+            <option value="strict">Strict</option>
+            <option value="nuclear">Nuclear</option>
+          </select>
+        </div>
+        <div>
+          <label style="text-transform:none; margin-top:20px;">
+            <input type="checkbox" id="chkDedupePos" style="width:auto; vertical-align:middle; margin-right:5px;">dedupe positive
+          </label>
+          <label style="text-transform:none;">
+            <input type="checkbox" id="chkDedupeNeg" style="width:auto; vertical-align:middle; margin-right:5px;">dedupe negative
+          </label>
+        </div>
+      </div>
+      <p class="hint" style="padding-left:0;" id="profileNote"></p>
+    </div>
+
+    <details>
+      <summary>External text inputs (Composer node slots)</summary>
+      <p class="hint" style="padding-left:0;">These configure where generic external STRING inputs land when this state runs
+        inside the Prompt Forge Composer node in ComfyUI. Labels are debug metadata only.</p>
+      <div class="row">
+        <div>
+          <label>External positive A — label / position</label>
+          <input type="text" id="extALabel" placeholder="e.g. auto triggers">
+          <select id="extAPos" style="margin-top:5px;"></select>
+        </div>
+        <div>
+          <label>External positive B — label / position</label>
+          <input type="text" id="extBLabel" placeholder="e.g. caption helper">
+          <select id="extBPos" style="margin-top:5px;"></select>
+        </div>
+      </div>
+    </details>
+
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn" onclick="buildPrompt()">Build prompt</button>
+      <button class="btn secondary" onclick="randomizeScene()">Randomize inspiration</button>
+      <button class="btn secondary" onclick="clearTabFields()">Clear tab</button>
+    </div>
+    <p class="hint">Output updates live as you type. "Build prompt" also logs to history and auto-pushes to the bridge. Ctrl/Cmd+Enter works anywhere.</p>
+
+    <h2>LLM enhance (optional)</h2>
+    <div class="fstack">
+      <label>Backend</label>
+      <div class="row" style="max-width:340px;">
+        <select id="selBackend">
+          <option value="local">Local server</option>
+          <option value="anthropic">Anthropic API</option>
         </select>
       </div>
     </div>
-    <div class="row">
-      <div class="field">
-        <div class="field-head">
-          <label>Medium</label>
-          <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="medium"> lock</label>
-        </div>
-        <input type="text" id="f_medium" placeholder="digital painting">
-      </div>
-      <div class="field">
-        <div class="field-head">
-          <label>Lighting</label>
-          <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="lighting"> lock</label>
-        </div>
-        <input type="text" id="f_lighting" placeholder="rim light, volumetric">
-      </div>
-    </div>
-    <div class="row">
-      <div class="field">
-        <div class="field-head">
-          <label>Composition</label>
-          <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="comp"> lock</label>
-        </div>
-        <input type="text" id="f_comp" placeholder="dynamic angle, close-up">
-      </div>
-      <div class="field">
-        <div class="field-head">
-          <label>Quality tags</label>
-          <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="quality"> lock</label>
-        </div>
-        <input type="text" id="f_quality" placeholder="masterpiece, best quality">
-      </div>
-    </div>
-    <div class="field">
-      <div class="field-head">
-        <label>Background</label>
-        <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="background"> lock</label>
-      </div>
-      <input type="text" id="f_background" placeholder="dense pine forest, stone ruins in distance">
-    </div>
-
-    <div class="field neg">
-      <div class="field-head">
-        <label>Negative prompt (editable base)</label>
-        <label class="lock-toggle"><input type="checkbox" class="lockbox" data-field="negative"> lock</label>
-      </div>
-      <textarea id="f_negative" rows="3">bad anatomy, extra limbs, low quality, blurry, watermark, deformed hands</textarea>
-    </div>
-
-    <h2>Output syntax</h2>
-    <div class="field">
-      <div class="toggle-group" id="syntaxToggle">
-        <button data-v="tags" class="active">Tag-style (SDXL/Pony)</button>
-        <button data-v="natural">Natural language (Flux/SD3)</button>
-      </div>
-      <p class="hint">Tag-style: comma-separated, click a tag in output to cycle weight. Natural: plain sentence, no weighting.</p>
-    </div>
-
-    <div class="btn-row">
-      <button class="btn" onclick="buildPrompt()">Build prompt</button>
-      <button class="btn secondary" onclick="randomize()">Randomize inspiration</button>
-      <button class="btn secondary" onclick="clearFields()">Clear</button>
-    </div>
-
-    <h2>LLM enhance (optional)</h2>
-    <div class="field">
-      <label>Backend</label>
-      <div class="toggle-group" id="backendToggle">
-        <button data-v="local" class="active">Local server</button>
-        <button data-v="anthropic">Anthropic API</button>
-      </div>
-    </div>
-
-    <div id="localConfig">
+    <div id="localConfig" class="fstack" style="margin-top:8px;">
       <div class="row">
-        <div class="field">
+        <div>
           <label>Endpoint format</label>
           <select id="localFormat">
-            <option value="openai">OpenAI-compatible (/v1/chat/completions) — llama.cpp server, LM Studio, text-gen-webui, vLLM</option>
+            <option value="openai">OpenAI-compatible (/v1/chat/completions)</option>
             <option value="ollama">Ollama native (/api/chat)</option>
           </select>
         </div>
       </div>
-      <div class="row">
-        <div class="field">
-          <label>Base URL (origin only — no path)</label>
-          <input type="text" id="localUrl" placeholder="http://localhost:11434" value="http://localhost:11434">
+      <div class="row" style="margin-top:6px;">
+        <div>
+          <label>Base URL (origin only)</label>
+          <input type="text" id="localUrl" value="http://localhost:11434">
         </div>
-        <div class="field">
+        <div>
           <label>Model name</label>
           <input type="text" id="localModel" placeholder="e.g. qwen2.5:14b">
         </div>
       </div>
-      <p class="hint">Any path typed here (e.g. /v1/models) is stripped automatically — only scheme+host+port is used, the full endpoint path is added for you.</p>
     </div>
-
-    <div id="anthropicConfig" style="display:none;">
+    <div id="anthropicConfig" class="fstack" style="display:none; margin-top:8px;">
       <div class="row">
-        <div class="field">
+        <div>
           <label>API key (stored in this browser only)</label>
           <input type="text" id="anthropicKey" placeholder="sk-ant-...">
         </div>
-        <div class="field">
+        <div>
           <label>Model</label>
-          <input type="text" id="anthropicModel" value="claude-sonnet-4-6">
+          <input type="text" id="anthropicModel" value="claude-sonnet-5">
         </div>
       </div>
-      <p class="hint">Calls api.anthropic.com directly from your browser with your key. Fine for a local personal tool — just don't share this file with the key filled in.</p>
+      <p class="hint" style="padding-left:0;">Calls api.anthropic.com directly from your browser. API keys are never included in project exports.</p>
     </div>
-
-    <div class="btn-row">
-      <button class="btn" onclick="enhancePrompt()">Enhance draft via LLM</button>
-    </div>
-    <div class="status" id="llmStatus"></div>
-
-    <div class="field" style="margin-top:16px;">
-      <label>Theme / idea (optional — leave blank for AI's own pick)</label>
+    <div class="fstack" style="margin-top:10px;">
+      <label>Theme / idea (optional)</label>
       <input type="text" id="f_theme" placeholder="e.g. solarpunk, noir detective, feral gods">
     </div>
-    <div class="btn-row">
+    <div class="btn-row" style="margin-top:8px;">
+      <button class="btn" onclick="enhancePrompt()">Enhance output via LLM</button>
       <button class="btn warn" onclick="generateFullDraft()">Generate full draft with AI</button>
     </div>
-    <div class="status" id="draftStatus"></div>
-    <p class="hint">Fills every field (subject, style, medium, lighting, composition, quality, negative additions, and character gender/age if it invents one) from a single AI call, then builds the prompt. Uses whichever backend is selected above.</p>
+    <div class="status" id="llmStatus"></div>
+    <p class="hint">Draft fills the active scene + global fields from one AI call. Locked fields are never overwritten. Enhance rewrites only the output box, not your fields.</p>
 
-    <details>
-      <summary>Why can't this run inside Claude Design / an artifact?</summary>
-      <p class="hint" style="padding-left:0;">Artifacts render in a sandboxed environment with no route to your machine's localhost and no persistent browser storage. This file runs directly in your own browser, so it can reach Ollama/llama.cpp on localhost and save presets locally.</p>
-    </details>
   </div>
 
-  <!-- RIGHT: OUTPUT -->
+  <!-- ================= RIGHT: OUTPUT ================= -->
   <div class="col">
-    <h2>Positive prompt</h2>
+
+    <h2>Positive prompt
+      <span class="h2-side">
+        view:
+        <select id="selPreviewMode" style="width:auto; padding:2px 6px; font-size:11px;">
+          <option value="raw">raw</option>
+          <option value="blocks">scene blocks</option>
+          <option value="debug">source map</option>
+        </select>
+      </span>
+    </h2>
     <div class="output-wrap">
-      <div class="output-box" id="posOutput" contenteditable="true">Fill in fields and click "Build prompt".</div>
-      <p class="hint" id="wordCountLabel" style="padding-left:0; margin-top:6px;"></p>
+      <div class="output-box" id="posOutput" contenteditable="true"></div>
+      <p class="hint" id="wordCountLabel" style="padding-left:18px; margin-top:6px;"></p>
       <div class="btn-row" style="margin-top:2px;">
-        <button class="btn secondary" onclick="copyBox('posOutput')">Copy</button>
+        <button class="btn secondary" onclick="copyBox('posOutput', event)">Copy</button>
+        <button class="btn secondary" onclick="copyBoth(event)">Copy both</button>
+        <button class="btn secondary" onclick="exportTxt()">Export TXT</button>
       </div>
     </div>
 
@@ -364,763 +436,1537 @@
     <div class="output-wrap">
       <div class="output-box" id="negOutput" contenteditable="true"></div>
       <div class="btn-row" style="margin-top:8px;">
-        <button class="btn secondary" onclick="copyBox('negOutput')">Copy</button>
-        <button class="btn secondary" onclick="copyBoth()">Copy both</button>
+        <button class="btn secondary" onclick="copyBox('negOutput', event)">Copy</button>
       </div>
     </div>
 
-    <h2>Multi-prompt segments (concat/combine)</h2>
+    <h2 id="lintHeader">Prompt health <span class="h2-side" id="lintScoreSide"></span></h2>
+    <div class="fstack" id="lintList"></div>
+
+    <h2>Inspector</h2>
+    <div class="fstack" id="inspector"></div>
+
+    <details id="negCleanerBox">
+      <summary>Negative cleaner (grouped view)</summary>
+      <p class="hint" style="padding-left:0;">Click a category name to exclude that whole group from the compiled negative.
+        Unknown terms are yours and always survive.</p>
+      <div id="negGroups"></div>
+    </details>
+
+    <h2>Variations</h2>
     <div class="row" style="padding-left:18px;">
-      <input type="text" id="segmentLabel" placeholder="segment label (optional)">
-      <button class="btn secondary" onclick="addSegment()" style="flex:0 0 auto;">Add current build</button>
+      <input type="number" id="variantCount" value="4" min="1" max="20" style="max-width:80px;">
+      <button class="btn secondary" onclick="openVariants()" style="flex:0 0 auto;">Generate variants</button>
     </div>
-    <div id="segmentList" style="padding-left:18px; margin-top:10px;"></div>
-    <div class="row" style="padding-left:18px; margin-top:10px;">
-      <select id="segmentSeparator" onchange="document.getElementById('segmentCustomSep').style.display = this.value==='custom' ? 'block' : 'none';">
-        <option value=", ">Comma-join (single scene)</option>
-        <option value="\n">Newline-join</option>
-        <option value=" BREAK ">BREAK-join (regional/multi-subject)</option>
-        <option value="custom">Custom separator...</option>
+    <p class="hint">Uses {a|b|c} wildcards in any field. Locked fields keep their first option. Example: "fox in {rain|snow|fog}".</p>
+
+    <h2>Libraries</h2>
+    <div class="row" style="padding-left:18px;">
+      <select id="libKind" style="max-width:150px;">
+        <option value="characters">Characters</option>
+        <option value="outfits">Outfits</option>
+        <option value="styles">Styles</option>
+        <option value="cameras">Cameras</option>
+        <option value="lighting">Lighting</option>
+        <option value="locations">Locations</option>
+        <option value="negativePresets">Negative presets</option>
+        <option value="qualityPresets">Quality presets</option>
+        <option value="templates">Templates</option>
       </select>
-      <input type="text" id="segmentCustomSep" placeholder="custom separator" style="display:none;">
+      <input type="text" id="libName" placeholder="save current tab as…">
+      <button class="btn secondary" onclick="saveLibraryItem()" style="flex:0 0 auto;">Save</button>
     </div>
-    <div class="btn-row">
-      <button class="btn warn" onclick="combineSegments()">Combine into output</button>
-      <button class="btn secondary" onclick="clearSegments()">Clear segments</button>
+    <div class="row" style="padding-left:18px; margin-top:6px;">
+      <input type="text" id="libSearch" placeholder="search library…" oninput="renderLibraries()">
+      <select id="libApplyMode" style="max-width:190px;">
+        <option value="insert_scene">Insert into current scene</option>
+        <option value="insert_global">Insert into global</option>
+        <option value="replace">Replace matching field</option>
+        <option value="append">Append to matching field</option>
+      </select>
     </div>
-    <p class="hint">Build a prompt, add it as a segment, repeat for each character/subject/scene, then combine. BREAK-join is for workflows/custom nodes that split on that keyword for regional or multi-subject conditioning — plain concatenation otherwise, this doesn't do actual regional conditioning itself.</p>
+    <div id="libList" style="padding-left:18px; margin-top:10px;"></div>
 
-    <h2>Presets</h2>
-    <div class="row" style="padding-left:18px;">
-      <input type="text" id="presetName" placeholder="preset name">
-      <button class="btn secondary" onclick="savePreset()" style="flex:0 0 auto;">Save</button>
-    </div>
-    <div id="presetList" style="padding-left:18px; margin-top:10px;"></div>
-
-    <h2>Prompt history</h2>
+    <h2>History <span class="h2-side"><label style="display:inline; text-transform:none;"><input type="checkbox" id="histFavOnly" onchange="renderHistory()" style="width:auto;"> favorites only</label></span></h2>
     <div id="historyList" style="padding-left:18px;"></div>
     <div class="btn-row">
-      <button class="btn secondary" onclick="clearHistory()">Clear history</button>
+      <button class="btn secondary" onclick="clearHistoryAll()">Clear history</button>
     </div>
-    <p class="hint">Every build (manual, randomized, or AI-generated) is logged automatically, newest first, capped at 50. Stored in this browser only.</p>
+    <div id="diffPanel" style="padding-left:18px; display:none;">
+      <label>Diff vs current output</label>
+      <div class="output-box" id="diffBox" style="margin-left:0;"></div>
+      <div class="btn-row" style="padding-left:0; margin-top:6px;">
+        <button class="mini-btn" onclick="document.getElementById('diffPanel').style.display='none'">Close diff</button>
+      </div>
+    </div>
+
+    <h2>Snapshots</h2>
+    <div class="row" style="padding-left:18px;">
+      <input type="text" id="snapName" placeholder="snapshot name">
+      <button class="btn secondary" onclick="createSnapshot()" style="flex:0 0 auto;">Snapshot now</button>
+    </div>
+    <div id="snapList" style="padding-left:18px; margin-top:10px;"></div>
+
+    <h2>Project &amp; data</h2>
+    <div class="btn-row">
+      <button class="btn secondary" onclick="exportProjectFile()">Export project</button>
+      <button class="btn secondary" onclick="pickImport('project')">Import project</button>
+      <button class="btn secondary" onclick="exportPresetPackFile()">Export preset pack</button>
+      <button class="btn secondary" onclick="pickImport('pack')">Import preset pack</button>
+      <button class="btn secondary" onclick="exportBackupAll()">Backup all data</button>
+      <button class="btn secondary" onclick="pickImport('backup')">Import backup</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none;" onchange="handleImportFile(event)">
+    </div>
+    <div class="status" id="backupStatus"></div>
+    <p class="hint">Project = scenes/fields/settings/libraries. Backup = everything including history, snapshots, and ComfyUI config. API keys are never exported.</p>
 
     <h2>Send to ComfyUI</h2>
-    <div class="field">
+    <div class="fstack">
       <label>ComfyUI base URL</label>
-      <input type="text" id="comfyUrl" placeholder="http://127.0.0.1:8188" value="http://127.0.0.1:8188">
+      <input type="text" id="comfyUrl" value="http://127.0.0.1:8188">
+      <label style="margin-top:8px;">Workflow (API format — Workflow → Export (API))</label>
+      <textarea id="comfyWorkflow" rows="3" placeholder="Paste your exported API-format workflow JSON here"></textarea>
     </div>
-    <div class="field">
-      <label>Workflow (API format — ComfyUI menu → Workflow → Export (API))</label>
-      <textarea id="comfyWorkflow" rows="4" placeholder="Paste your exported API-format workflow JSON here"></textarea>
-    </div>
-    <div class="btn-row">
+    <div class="btn-row" style="margin-top:6px;">
       <button class="btn secondary" onclick="parseComfyWorkflow()">Parse workflow</button>
+      <button class="btn warn" onclick="sendToComfyUI()">Send to ComfyUI</button>
     </div>
     <div class="row" id="comfyNodeSelectRow" style="display:none; padding-left:18px;">
-      <div style="flex:1;">
-        <label style="display:block; font-family:var(--mono); font-size:11px; color:var(--muted); margin-bottom:5px;">Positive prompt node</label>
+      <div>
+        <label>Positive node</label>
         <select id="comfyPosNode"></select>
       </div>
-      <div style="flex:1;">
-        <label style="display:block; font-family:var(--mono); font-size:11px; color:var(--muted); margin-bottom:5px;">Negative prompt node</label>
+      <div>
+        <label>Negative node</label>
         <select id="comfyNegNode"><option value="">None</option></select>
       </div>
     </div>
-    <div class="btn-row">
-      <button class="btn warn" onclick="sendToComfyUI()">Send to ComfyUI</button>
-    </div>
     <div class="status" id="comfyStatus"></div>
-    <p class="hint">Requires ComfyUI launched with <code>--enable-cors-header "*"</code> to accept requests from a browser. Workflow, URL, and node choice are saved locally so you only paste this once. This queues generation directly — it does not wait for or show the resulting image.</p>
+    <p class="hint">Requires ComfyUI launched with <code>--enable-cors-header "*"</code>. Tip: with the new Prompt Forge Composer node + panel you don't need this export flow at all.</p>
 
-    <h2>Bridge to custom node (live, no export)</h2>
-    <div class="field">
-      <label>Bridge URL (run promptforge_bridge.py locally first)</label>
-      <input type="text" id="bridgeUrl" placeholder="http://127.0.0.1:8199" value="http://127.0.0.1:8199">
-    </div>
-    <div class="field">
-      <label><input type="checkbox" id="bridgeAutoPush" checked style="width:auto; vertical-align:middle; margin-right:6px;">Auto-push every time a prompt is built</label>
+    <h2>Bridge to custom node (live)</h2>
+    <div class="fstack">
+      <label>Bridge URL (run promptforge_bridge.py first)</label>
+      <input type="text" id="bridgeUrl" value="http://127.0.0.1:8199">
+      <label style="text-transform:none; margin-top:6px;">
+        <input type="checkbox" id="bridgeAutoPush" checked style="width:auto; vertical-align:middle; margin-right:6px;">Auto-push on every build
+      </label>
     </div>
     <div class="btn-row">
       <button class="btn secondary" onclick="pushToBridge(true)">Push now</button>
     </div>
     <div class="status" id="bridgeStatus"></div>
-    <p class="hint">Pairs with the "Prompt Forge Bridge" ComfyUI node — wire its two STRING outputs into your text-encode nodes. No workflow paste needed; the node re-fetches from here on every queue.</p>
+    <p class="hint">Pairs with the Prompt Forge Bridge node (compatibility route) — the Composer node + panel is the newer native route.</p>
 
-    <h2>Backup &amp; restore</h2>
-    <div class="btn-row">
-      <button class="btn secondary" onclick="exportBackup()">Export all data</button>
-      <button class="btn secondary" onclick="document.getElementById('importFile').click()">Import backup</button>
-      <input type="file" id="importFile" accept="application/json" style="display:none;" onchange="importBackup(event)">
-    </div>
-    <div class="status" id="backupStatus"></div>
-    <p class="hint">Presets, history, segments, and your ComfyUI/bridge config live only in this browser's local storage — clearing browser data, going incognito, or moving to a new machine loses all of it. Export periodically if any of this matters to you.</p>
   </div>
-
 </div>
 
-<script>
-// ---------- state ----------
-let syntaxMode = 'tags';
-let backend = 'local';
+<!-- variants overlay -->
+<div class="overlay" id="variantOverlay">
+  <div class="overlay-panel">
+    <h2 style="margin-top:0;">Variants <span class="h2-side"><button class="mini-btn" onclick="closeOverlay('variantOverlay')">Close</button></span></h2>
+    <div id="variantList"></div>
+  </div>
+</div>
 
-// Chrome says "Failed to fetch", Firefox says "NetworkError when attempting to fetch
-// resource", Safari says "Load failed" — all mean the same thing: unreachable host,
-// refused connection, or a CORS preflight that didn't pass. Match all of them so the
-// helpful diagnostic actually shows regardless of browser.
+<!-- command palette -->
+<div class="overlay" id="paletteOverlay">
+  <div class="overlay-panel">
+    <input type="text" id="paletteInput" placeholder="Type a command… (Esc closes)">
+    <div id="paletteList"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="prompt-bridge-forge/js/promptforge_state.js"></script>
+<script src="prompt-bridge-forge/js/promptforge_profiles.js"></script>
+<script src="prompt-bridge-forge/js/promptforge_linter.js"></script>
+<script src="prompt-bridge-forge/js/promptforge_compiler.js"></script>
+<script>
+"use strict";
+// ============================================================ bootstrap ----
+if (!window.PromptForge || !window.PromptForge.compilePromptForgeState) {
+  document.getElementById('coreErrorBanner').classList.add('show');
+  throw new Error('Prompt Forge core scripts missing');
+}
+const PF = window.PromptForge;
+
+const $ = id => document.getElementById(id);
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>{ t.style.display = 'none'; }, 2400);
+}
+function debounce(fn, ms){
+  let t;
+  return function(){
+    clearTimeout(t);
+    const args = arguments;
+    t = setTimeout(()=>fn.apply(null, args), ms);
+  };
+}
+function download(filename, text){
+  const blob = new Blob([text], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 function isNetworkError(err){
   const msg = (err && err.message) || '';
   return /failed to fetch|networkerror|load failed/i.test(msg);
 }
-let tagWeights = {}; // tagText -> weight
 
-// ---------- toggles ----------
-function wireToggle(id, onChange){
-  const el = document.getElementById(id);
-  el.querySelectorAll('button').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      el.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      onChange(btn.dataset.v);
+// ============================================================ state ----
+const LS_STATE = 'promptforge_state_v2';
+const LS_AUTOSAVE = 'promptforge_autosaves_v2';
+let S = null;          // the PromptForgeState
+let uiTab = 'global';  // 'global' | sceneId
+let lastCompiled = null;
+let outputDirty = false; // user hand-edited the output box
+
+function strippedState(){
+  const c = PF.deepClone(S);
+  c.history = [];
+  c.snapshots = [];
+  return c;
+}
+
+function loadState(){
+  // 1. existing v2 state
+  try{
+    const raw = localStorage.getItem(LS_STATE);
+    if(raw){
+      const res = PF.validateAndRepair(JSON.parse(raw));
+      S = res.state;
+      if(res.issues.length) console.warn('[PromptForge] state repaired:', res.issues);
+      return;
+    }
+  }catch(e){ console.warn('v2 state unreadable', e); }
+
+  // 2. migrate legacy v1 data (never deleted — kept as backup)
+  let migrated = false;
+  let legacyDraft = null, legacyPresets = null, legacyHistory = null, legacySegments = null;
+  try{ legacyDraft = JSON.parse(localStorage.getItem('promptforge_draft') || 'null'); }catch(e){}
+  try{ legacyPresets = JSON.parse(localStorage.getItem('promptforge_presets') || 'null'); }catch(e){}
+  try{ legacyHistory = JSON.parse(localStorage.getItem('promptforge_history') || 'null'); }catch(e){}
+  try{ legacySegments = JSON.parse(localStorage.getItem('promptforge_segments') || 'null'); }catch(e){}
+
+  if(legacyDraft || legacyPresets || legacyHistory || legacySegments){
+    S = PF.migrateLegacyDraft(legacyDraft || {});
+    if(legacyPresets){
+      Object.keys(legacyPresets).forEach(name=>{
+        S.libraries.templates.push(PF.migrateLegacyPreset(name, legacyPresets[name]));
+      });
+    }
+    if(Array.isArray(legacyHistory)){
+      legacyHistory.slice(0, 50).forEach(h=>{
+        S.history.push({
+          id: PF.uid('hist'), createdAt: h.ts || new Date().toISOString(),
+          positive: h.positive || '', negative: h.negative || '',
+          modelProfile: 'generic', notes: 'migrated from v1', rating: 0,
+          favorite: false, state: null,
+        });
+      });
+    }
+    if(Array.isArray(legacySegments) && legacySegments.length){
+      legacySegments.forEach(seg=>{
+        S.scenes.push(PF.makeScene({
+          name: seg.label || 'Segment',
+          fields: [{type:'custom', label:'Migrated segment', text: seg.positive || ''}],
+          negativeFields: seg.negative ? [{type:'negative', text: seg.negative}] : [],
+        }));
+      });
+    }
+    migrated = true;
+  } else {
+    S = PF.makeDefaultState();
+  }
+
+  if(migrated){
+    $('migrateBannerText').textContent =
+      'Migrated your old Prompt Forge data (draft, presets, history, segments) into the new scene system. The old data is untouched — export a backup if you want a copy.';
+    $('migrateBanner').classList.add('show');
+  }
+}
+
+const persist = debounce(function(){
+  try{
+    localStorage.setItem(LS_STATE, JSON.stringify(S));
+    // autosave ring — last 5 states for crash recovery
+    let ring = [];
+    try{ ring = JSON.parse(localStorage.getItem(LS_AUTOSAVE) || '[]'); }catch(e){}
+    ring.unshift({at: new Date().toISOString(), state: strippedState()});
+    if(ring.length > 5) ring.length = 5;
+    localStorage.setItem(LS_AUTOSAVE, JSON.stringify(ring));
+  }catch(e){ console.warn('persist failed', e); }
+}, 900);
+
+function commit(){
+  persist();
+  compileNow();
+}
+
+// ============================================================ scenes ----
+function activeSceneObj(){ return PF.getActiveScene(S); }
+function currentTabScene(){
+  return uiTab === 'global' ? null : S.scenes.find(s=>s.id===uiTab) || null;
+}
+
+function selectTab(tab){
+  uiTab = tab;
+  if(tab !== 'global'){ S.activeSceneId = tab; }
+  renderSceneBar();
+  renderFieldStacks();
+  commit();
+}
+
+function renderSceneBar(){
+  const bar = $('sceneBar');
+  bar.innerHTML = '';
+  const gtab = document.createElement('div');
+  gtab.className = 'scene-tab global-tab' + (uiTab==='global' ? ' active':'');
+  gtab.innerHTML = '<span class="nm">Global</span>';
+  gtab.onclick = ()=>selectTab('global');
+  bar.appendChild(gtab);
+
+  S.scenes.forEach(scene=>{
+    const t = document.createElement('div');
+    t.className = 'scene-tab' + (scene.enabled?' on':' off') + (uiTab===scene.id?' active':'');
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.title = scene.enabled ? 'enabled — click to disable' : 'disabled — click to enable';
+    dot.onclick = (e)=>{ e.stopPropagation(); scene.enabled = !scene.enabled; renderSceneBar(); commit(); };
+    const nm = document.createElement('span');
+    nm.className = 'nm';
+    nm.textContent = scene.name;
+    nm.title = 'double-click to rename';
+    t.appendChild(dot); t.appendChild(nm);
+    t.onclick = ()=>selectTab(scene.id);
+    t.ondblclick = ()=>{
+      const inp = document.createElement('input');
+      inp.value = scene.name;
+      nm.replaceWith(inp);
+      inp.focus(); inp.select();
+      const done = ()=>{ scene.name = inp.value.trim() || scene.name; renderSceneBar(); commit(); };
+      inp.onblur = done;
+      inp.onkeydown = e=>{ if(e.key==='Enter') inp.blur(); if(e.key==='Escape'){ inp.value=scene.name; inp.blur(); } };
+    };
+    bar.appendChild(t);
+  });
+
+  const add = document.createElement('div');
+  add.className = 'scene-tab';
+  add.textContent = '+';
+  add.title = 'Add scene';
+  add.onclick = addScene;
+  bar.appendChild(add);
+
+  renderSceneTools();
+}
+
+function renderSceneTools(){
+  const el = $('sceneTools');
+  el.innerHTML = '';
+  const scene = currentTabScene();
+  if(!scene){
+    el.innerHTML = '<span>Global tab — these fields apply to every scene.</span>';
+    return;
+  }
+  const mk = (label, fn, opts)=>{
+    const b = document.createElement('button');
+    b.className = 'mini-btn' + ((opts&&opts.cls)?' '+opts.cls:'');
+    b.textContent = label;
+    if(opts && opts.title) b.title = opts.title;
+    if(opts && opts.disabled) b.disabled = true;
+    b.onclick = fn;
+    el.appendChild(b);
+    return b;
+  };
+  const idx = S.scenes.findIndex(s=>s.id===scene.id);
+  mk('◀ move', ()=>{ PF.moveScene(S, scene.id, -1); renderSceneBar(); commit(); }, {disabled: idx===0});
+  mk('move ▶', ()=>{ PF.moveScene(S, scene.id, 1); renderSceneBar(); commit(); }, {disabled: idx===S.scenes.length-1});
+  mk('duplicate', ()=>{ const c = PF.duplicateScene(S, scene.id); if(c) selectTab(c.id); });
+  mk(scene.enabled ? 'disable' : 'enable', ()=>{ scene.enabled = !scene.enabled; renderSceneBar(); commit(); });
+  mk('delete', ()=>{
+    if(S.scenes.length <= 1){ toast('Keep at least one scene.'); return; }
+    if(!confirm('Delete scene "'+scene.name+'"? Global fields are not affected.')) return;
+    S.scenes = S.scenes.filter(s=>s.id!==scene.id);
+    if(S.activeSceneId === scene.id) S.activeSceneId = S.scenes[0].id;
+    selectTab(S.scenes[0].id);
+  }, {cls:'danger'});
+
+  const wlabel = document.createElement('span');
+  wlabel.textContent = 'weight';
+  el.appendChild(wlabel);
+  const w = document.createElement('input');
+  w.type = 'number'; w.step = '0.05'; w.min='0'; w.className='fw';
+  w.value = scene.weight;
+  w.onchange = ()=>{ scene.weight = parseFloat(w.value)||1; commit(); };
+  el.appendChild(w);
+
+  const nlabel = document.createElement('span');
+  nlabel.textContent = 'notes';
+  el.appendChild(nlabel);
+  const n = document.createElement('input');
+  n.type = 'text'; n.style.cssText='width:200px; padding:2px 6px; font-size:11px;';
+  n.value = scene.notes || '';
+  n.placeholder = 'scene notes (never compiled)';
+  n.onchange = ()=>{ scene.notes = n.value; commit(); };
+  el.appendChild(n);
+}
+
+function addScene(){
+  const scene = PF.makeScene({
+    name: 'Scene ' + (S.scenes.length + 1),
+    fields: PF.DEFAULT_SCENE_FIELD_TYPES.map(t=>({type:t})),
+  });
+  S.scenes.push(scene);
+  selectTab(scene.id);
+  toast('Scene added');
+}
+
+// ======================================================== field stack ----
+const POSITIVE_TYPES = PF.FIELD_TYPES.filter(t=>!['negative','forced_negative'].includes(t));
+
+function tabCollections(){
+  const scene = currentTabScene();
+  if(scene) return { fields: scene.fields, negs: scene.negativeFields, scopeName: scene.name };
+  return { fields: S.global.fields, negs: S.global.negativeFields, scopeName: 'Global' };
+}
+
+function renderFieldStacks(){
+  const {fields, negs, scopeName} = tabCollections();
+  $('tabLabel').textContent = '· ' + scopeName;
+  renderStack($('fieldStack'), fields, false);
+  renderStack($('negFieldStack'), negs, true);
+  syncSafetyToggles();
+}
+
+function renderStack(container, fields, isNeg){
+  container.innerHTML = '';
+  if(!fields.length){
+    container.innerHTML = '<p class="hint" style="padding-left:0;">No fields — add one below.</p>';
+  }
+  fields.forEach((f, i)=>{
+    const row = document.createElement('div');
+    row.className = 'frow' + (isNeg?' neg':'') + (f.enabled?'':' disabled') + (f.locked?' locked-f':'');
+    row.dataset.fieldId = f.id;
+
+    const head = document.createElement('div');
+    head.className = 'frow-head';
+
+    const type = document.createElement('span');
+    type.className = 'ftype';
+    type.textContent = f.type;
+    head.appendChild(type);
+
+    const lab = document.createElement('span');
+    lab.className = 'flabel';
+    lab.textContent = f.label;
+    lab.title = 'double-click to rename';
+    lab.ondblclick = ()=>{
+      const v = prompt('Field label:', f.label);
+      if(v !== null){ f.label = v.trim() || f.label; renderFieldStacks(); commit(); }
+    };
+    head.appendChild(lab);
+
+    const ctl = document.createElement('span');
+    ctl.className = 'fctl';
+    const mk = (txt, title, fn, toggled, disabled)=>{
+      const b = document.createElement('button');
+      b.className = 'mini-btn' + (toggled?' toggled':'');
+      b.textContent = txt; b.title = title;
+      b.disabled = !!disabled;
+      b.onclick = fn;
+      ctl.appendChild(b);
+      return b;
+    };
+    mk(f.enabled?'on':'off', 'enable/disable — disabled fields are not compiled',
+      ()=>{ f.enabled = !f.enabled; renderFieldStacks(); commit(); }, f.enabled);
+    mk('🔒', f.locked?'locked — AI enhance/variations cannot change this':'unlocked',
+      ()=>{ f.locked = !f.locked; renderFieldStacks(); commit(); }, f.locked);
+    mk('↑','move up', ()=>{ moveField(fields, i, -1); }, false, i===0);
+    mk('↓','move down', ()=>{ moveField(fields, i, 1); }, false, i===fields.length-1);
+    mk('⧉','duplicate', ()=>{
+      const c = PF.makeField(Object.assign(PF.deepClone(f), {id: undefined}));
+      c.id = PF.uid('field');
+      fields.splice(i+1, 0, c);
+      renderFieldStacks(); commit();
     });
+    mk('📝','notes (never compiled)', ()=>{
+      row.querySelector('.fnotes').style.display =
+        row.querySelector('.fnotes').style.display==='none' ? 'block':'none';
+    });
+    mk('×','delete field', ()=>{
+      fields.splice(i,1);
+      renderFieldStacks(); commit();
+    });
+
+    const w = document.createElement('input');
+    w.type='number'; w.step='0.05'; w.min='0'; w.className='fw'; w.title='field weight (profile permitting)';
+    w.value = f.weight;
+    w.onchange = ()=>{ f.weight = parseFloat(w.value)||1; commit(); };
+    ctl.appendChild(w);
+    head.appendChild(ctl);
+    row.appendChild(head);
+
+    const ta = document.createElement('textarea');
+    ta.rows = 1;
+    ta.value = f.text;
+    ta.placeholder = placeholderFor(f.type);
+    ta.oninput = ()=>{ f.text = ta.value; commit(); };
+    row.appendChild(ta);
+
+    const notes = document.createElement('div');
+    notes.className = 'fnotes';
+    notes.style.display = f.notes ? 'block':'none';
+    const nta = document.createElement('textarea');
+    nta.rows = 1; nta.value = f.notes; nta.placeholder = 'notes / rationale — never compiled';
+    nta.oninput = ()=>{ f.notes = nta.value; persist(); };
+    notes.appendChild(nta);
+    row.appendChild(notes);
+
+    container.appendChild(row);
   });
 }
-wireToggle('syntaxToggle', v=>{ syntaxMode = v; });
-wireToggle('backendToggle', v=>{
-  backend = v;
-  document.getElementById('localConfig').style.display = v==='local' ? 'block':'none';
-  document.getElementById('anthropicConfig').style.display = v==='anthropic' ? 'block':'none';
-});
 
-document.getElementById('f_hasChar').addEventListener('change', (e)=>{
-  document.getElementById('charOptions').style.display = e.target.checked ? 'flex' : 'none';
-});
+function moveField(fields, i, dir){
+  const j = i + dir;
+  if(j < 0 || j >= fields.length) return;
+  [fields[i], fields[j]] = [fields[j], fields[i]];
+  renderFieldStacks(); commit();
+}
 
-const locks = {subject:false, character:false, style:false, medium:false, lighting:false, comp:false, quality:false, background:false, negative:false};
-document.querySelectorAll('.lockbox').forEach(cb=>{
-  cb.addEventListener('change', e=>{
-    locks[e.target.dataset.field] = e.target.checked;
-    e.target.closest('.lock-toggle').classList.toggle('locked', e.target.checked);
+function placeholderFor(type){
+  return {
+    subject:'silver hair, red eyes / woman jumping off a cliff',
+    character:'1girl, adult / silver-haired woman, heterochromia',
+    style:'ghibli style, cel shaded', medium:'digital painting',
+    lighting:'rim light, volumetric', composition:'dynamic angle, close-up',
+    camera:'35mm lens, low angle', quality:'masterpiece, best quality',
+    background:'dense pine forest, stone ruins in distance',
+    environment:'light rain, scattered leaves', action:'mid-jump, arms spread',
+    clothing:'black wetsuit', expression:'calm expression', mood:'serene, melancholic',
+    props:'katana, floating lanterns', negative:'things to avoid…',
+    custom:'anything — supports {a|b|c} wildcards',
+    forced_positive:'always-first lead-in text', forced_negative:'always-included negative',
+  }[type] || '';
+}
+
+function addFieldToTab(isNeg){
+  const {fields, negs} = tabCollections();
+  const scope = uiTab==='global' ? 'global':'scene';
+  if(isNeg){
+    negs.push(PF.makeField({type:'negative', scope}));
+  } else {
+    const type = $('addFieldType').value || 'custom';
+    fields.push(PF.makeField({type, scope}));
+  }
+  renderFieldStacks(); commit();
+}
+
+function clearTabFields(){
+  if(!confirm('Clear all field text on this tab? (fields stay, text is emptied)')) return;
+  const {fields, negs} = tabCollections();
+  fields.forEach(f=>{ if(!f.locked) f.text=''; });
+  negs.forEach(f=>{ if(!f.locked) f.text=''; });
+  renderFieldStacks(); commit();
+}
+
+// Rule-based prompt-to-field parser (23.32): everything lands in review-able
+// fields; the original text is preserved in notes.
+function pasteToFields(){
+  const raw = prompt('Paste a full prompt — it will be split into fields on this tab:');
+  if(!raw || !raw.trim()) return;
+  const {fields} = tabCollections();
+  const scope = uiTab==='global' ? 'global':'scene';
+  const buckets = {style:[], lighting:[], camera:[], quality:[], background:[], subject:[]};
+  const tests = [
+    ['lighting', /light|lit|glow|shadow|golden hour|backlit|neon|sun|moon/i],
+    ['camera',   /\b\d{2,3}mm\b|lens|close-up|wide shot|angle|shot|bokeh|depth of field/i],
+    ['quality',  /masterpiece|best quality|detailed|8k|4k|uhd|score_\d|aesthetic|sharp focus/i],
+    ['style',    /style|anime|photoreal|painting|render|watercolor|sketch|art\b/i],
+    ['background',/background|forest|city|ruins|interior|landscape|sky|ocean|room/i],
+  ];
+  PF.splitPhrases(raw).forEach(phrase=>{
+    const hit = tests.find(([,re])=>re.test(phrase));
+    buckets[hit ? hit[0] : 'subject'].push(phrase);
   });
-});
-function lockedFieldSummary(){
-  return Object.entries(locks).filter(([,v])=>v).map(([k])=>k);
+  Object.keys(buckets).forEach(type=>{
+    if(!buckets[type].length) return;
+    fields.push(PF.makeField({
+      type, scope, text: buckets[type].join(', '),
+      notes: 'from pasted prompt', label: PF.TYPE_LABELS[type] + ' (pasted)',
+    }));
+  });
+  renderFieldStacks(); commit();
+  toast('Prompt split into fields — review and merge as needed.');
 }
 
-function applyStylePreset(){
-  const preset = document.getElementById('f_stylePreset').value;
-  if(!preset) return;
-  const styleField = document.getElementById('f_style');
-  const current = styleField.value.trim();
-  styleField.value = current ? current + ', ' + preset : preset;
-  document.getElementById('f_stylePreset').value = '';
-}
-
-// ---------- build prompt ----------
-const inspirationPools = {
-  subject: ["lone astronaut","feral fox spirit","cybernetic monk","rain-soaked detective","ancient library keeper"],
-  style: ["ukiyo-e woodblock","synthwave","gothic oil painting","cel-shaded anime","brutalist concept art"],
-  medium: ["digital painting","35mm film photo","watercolor","3d render, octane","ink wash"],
-  lighting: ["golden hour","harsh studio strobe","bioluminescent glow","overcast diffuse light","neon backlight"],
-  comp: ["extreme close-up","wide establishing shot","dutch angle","symmetrical framing","over-the-shoulder"],
-  quality: ["masterpiece, best quality, highly detailed","8k uhd, sharp focus","award winning, trending on artstation"],
-  background: ["dense misty forest","neon-lit alley at night","open desert horizon","cluttered workshop interior","crumbling stone ruins"]
+// Safety/exposure controls (23.36) — visible negative fields, never hidden edits.
+const SAFETY_DEFS = {
+  safety_nsfw: {chk:'safetyNsfw', text:'nsfw, nude, explicit', label:'Exposure control'},
+  safety_gore: {chk:'safetyGore', text:'blood, injury, gore', label:'Gore control'},
 };
+function syncSafetyToggles(){
+  Object.keys(SAFETY_DEFS).forEach(id=>{
+    $(SAFETY_DEFS[id].chk).checked = S.global.negativeFields.some(f=>f.label===SAFETY_DEFS[id].label && f.enabled);
+  });
+}
+Object.keys(SAFETY_DEFS).forEach(id=>{
+  $(SAFETY_DEFS[id].chk).addEventListener('change', e=>{
+    const def = SAFETY_DEFS[id];
+    let f = S.global.negativeFields.find(x=>x.label===def.label);
+    if(e.target.checked){
+      if(!f){
+        f = PF.makeField({type:'negative', label:def.label, text:def.text, scope:'global'});
+        S.global.negativeFields.push(f);
+      }
+      f.enabled = true;
+    } else if(f){
+      f.enabled = false;
+    }
+    renderFieldStacks(); commit();
+  });
+});
 
-function randomize(){
-  const pick = arr => arr[Math.floor(Math.random()*arr.length)];
-  document.getElementById('f_subject').value = pick(inspirationPools.subject);
-  document.getElementById('f_style').value = pick(inspirationPools.style);
-  document.getElementById('f_medium').value = pick(inspirationPools.medium);
-  document.getElementById('f_lighting').value = pick(inspirationPools.lighting);
-  document.getElementById('f_comp').value = pick(inspirationPools.comp);
-  document.getElementById('f_quality').value = pick(inspirationPools.quality);
-  document.getElementById('f_background').value = pick(inspirationPools.background);
-  buildPrompt();
+// ============================================================ settings ----
+function renderSettings(){
+  const selP = $('selProfile');
+  selP.innerHTML = '';
+  PF.listProfiles().forEach(p=>selP.appendChild(new Option(p.label, p.id)));
+  selP.value = S.settings.modelProfile;
+
+  $('selOutputMode').value = S.settings.outputMode;
+  $('selJoiner').value = S.settings.sceneJoiner;
+  $('joinerCustom').style.display = S.settings.sceneJoiner==='custom' ? 'block':'none';
+  $('joinerCustom').value = S.settings.sceneJoinerCustom || '';
+  $('selSeverity').value = S.settings.negativeSeverity;
+  $('chkDedupePos').checked = S.settings.dedupePositive !== false;
+  $('chkDedupeNeg').checked = S.settings.dedupeNegative !== false;
+
+  const t = $('addFieldType');
+  t.innerHTML = '';
+  POSITIVE_TYPES.forEach(ty=>t.appendChild(new Option(PF.TYPE_LABELS[ty]||ty, ty)));
+  t.value = 'custom';
+
+  [['extAPos','positiveA','extALabel'],['extBPos','positiveB','extBLabel']].forEach(([selId, slot, labId])=>{
+    const sel = $(selId);
+    sel.innerHTML = '';
+    PF.EXTERNAL_POSITIONS.forEach(p=>sel.appendChild(new Option(p.replace(/_/g,' '), p)));
+    sel.value = S.externals[slot].position || 'before_quality';
+    sel.onchange = ()=>{ S.externals[slot].position = sel.value; commit(); };
+    $(labId).value = S.externals[slot].label || '';
+    $(labId).onchange = ()=>{ S.externals[slot].label = $(labId).value; persist(); };
+  });
+
+  updateProfileNote();
+}
+function updateProfileNote(){
+  const p = PF.getProfile(S.settings.modelProfile);
+  $('profileNote').textContent = p.label + ': ' + (p.notes || '') +
+    (p.supportsWeights ? ' Weights supported.' : ' Weight syntax suppressed.');
+}
+$('selProfile').addEventListener('change', e=>{ S.settings.modelProfile = e.target.value; updateProfileNote(); commit(); });
+$('selOutputMode').addEventListener('change', e=>{ S.settings.outputMode = e.target.value; commit(); });
+$('selJoiner').addEventListener('change', e=>{
+  S.settings.sceneJoiner = e.target.value;
+  $('joinerCustom').style.display = e.target.value==='custom' ? 'block':'none';
+  commit();
+});
+$('joinerCustom').addEventListener('input', e=>{ S.settings.sceneJoinerCustom = e.target.value; commit(); });
+$('selSeverity').addEventListener('change', e=>{ S.settings.negativeSeverity = e.target.value; commit(); });
+$('chkDedupePos').addEventListener('change', e=>{ S.settings.dedupePositive = e.target.checked; commit(); });
+$('chkDedupeNeg').addEventListener('change', e=>{ S.settings.dedupeNegative = e.target.checked; commit(); });
+
+// ============================================================ compile ----
+function compileNow(){
+  lastCompiled = PF.compilePromptForgeState(S, {});
+  outputDirty = false;
+  renderOutputs();
+  renderLint();
+  renderInspector();
+  renderNegGroups();
 }
 
-function clearFields(){
-  if(!confirm('Clear all fields and the current output?')) return;
-  ['f_subject','f_style','f_medium','f_lighting','f_comp','f_quality','f_background'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('posOutput').innerText = 'Fill in fields and click "Build prompt".';
-  document.getElementById('negOutput').innerText = '';
-  tagWeights = {};
+function renderOutputs(){
+  const mode = $('selPreviewMode').value;
+  const pos = $('posOutput');
+  if(mode === 'debug'){
+    pos.contentEditable = false;
+    pos.innerHTML = '';
+    if(!lastCompiled.sourceMap.length){
+      pos.textContent = '(empty prompt)';
+    }
+    lastCompiled.sourceMap.forEach(entry=>{
+      const span = document.createElement('span');
+      const kind = entry.source.split('.')[0];
+      span.className = 'tag src-' + (['global','scene','external','profile'].includes(kind)?kind:'scene');
+      span.textContent = entry.text;
+      span.title = entry.source + ' — click to jump to the field';
+      span.onclick = ()=>jumpToField(entry);
+      pos.appendChild(span);
+    });
+  } else {
+    pos.contentEditable = true;
+    pos.innerText = mode === 'blocks' ? lastCompiled.positivePreview : lastCompiled.positive;
+  }
+  $('negOutput').innerText = lastCompiled.negative;
+  updateWordCount();
 }
+$('selPreviewMode').addEventListener('change', renderOutputs);
+$('posOutput').addEventListener('input', ()=>{ outputDirty = true; updateWordCount(); });
+$('negOutput').addEventListener('input', ()=>{ outputDirty = true; });
+
+function jumpToField(entry){
+  // source map → highlight the originating field (23.2)
+  if(entry.sceneId && entry.sceneId !== 'global'){
+    const scene = S.scenes.find(s=>s.id===entry.sceneId);
+    if(scene && uiTab !== scene.id && entry.source.startsWith('scene')){ selectTab(scene.id); }
+  }
+  if(entry.source.startsWith('global') && uiTab !== 'global'){ selectTab('global'); }
+  setTimeout(()=>{
+    const row = document.querySelector('[data-field-id="'+entry.fieldId+'"]');
+    if(row){
+      row.scrollIntoView({behavior:'smooth', block:'center'});
+      row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash');
+    } else {
+      toast('Source: ' + entry.source);
+    }
+  }, 60);
+}
+
+// current text of the output boxes (user may have hand-edited them)
+function currentPositive(){ return $('posOutput').innerText.trim(); }
+function currentNegative(){ return $('negOutput').innerText.trim(); }
 
 function buildPrompt(){
-  const vals = {
-    subject: document.getElementById('f_subject').value.trim(),
-    style: document.getElementById('f_style').value.trim(),
-    medium: document.getElementById('f_medium').value.trim(),
-    lighting: document.getElementById('f_lighting').value.trim(),
-    comp: document.getElementById('f_comp').value.trim(),
-    quality: document.getElementById('f_quality').value.trim(),
-    background: document.getElementById('f_background').value.trim(),
-  };
-
-  let charPrefix = '';
-  if(document.getElementById('f_hasChar').checked){
-    const gender = document.getElementById('f_gender').value;
-    const age = document.getElementById('f_age').value;
-    if(syntaxMode === 'tags'){
-      const genderTag = {female:'1girl', male:'1boy', nonbinary:'1other'}[gender] || '';
-      const ageTag = {young_adult:'young adult', adult:'adult', middle_aged:'middle-aged', elderly:'elderly'}[age] || '';
-      charPrefix = [genderTag, ageTag].filter(Boolean).join(', ');
-    } else {
-      const genderPhrase = {female:'a woman', male:'a man', nonbinary:'a person'}[gender] || (age ? 'a person' : '');
-      const ageWord = {young_adult:'young adult', adult:'', middle_aged:'middle-aged', elderly:'elderly'}[age] || '';
-      charPrefix = [ageWord, genderPhrase].filter(Boolean).join(' ').trim();
-    }
-  }
-
-  const parts = [charPrefix, ...Object.values(vals)].filter(Boolean);
-  const negBase = document.getElementById('f_negative').value.trim();
-
-  const posBox = document.getElementById('posOutput');
-  const negBox = document.getElementById('negOutput');
-
-  if(syntaxMode === 'tags'){
-    tagWeights = {};
-    parts.forEach(p=>{
-      p.split(',').map(s=>s.trim()).filter(Boolean).forEach(tag=>{ tagWeights[tag] = 1.0; });
-    });
-    renderTagOutput();
-    negBox.innerText = negBase.split(',').map(s=>s.trim()).filter(Boolean).join(', ');
-  } else {
-    posBox.innerText = parts.join(', ');
-    negBox.innerText = negBase;
-  }
-
-  pushHistory(document.getElementById('posOutput').innerText, document.getElementById('negOutput').innerText);
+  compileNow();
+  pushHistory(lastCompiled.positive, lastCompiled.negative);
+  if($('bridgeAutoPush').checked) pushToBridge(false, lastCompiled.positive, lastCompiled.negative);
 }
 
-function renderTagOutput(){
-  const posBox = document.getElementById('posOutput');
-  posBox.innerHTML = '';
-  posBox.contentEditable = false; // switch to click-to-weight mode
-  Object.entries(tagWeights).forEach(([tag,w], i)=>{
-    const span = document.createElement('span');
-    span.className = 'tag' + (w<1 ? ' w-low' : w>1 ? ' w-high' : '');
-    span.textContent = w===1 ? tag : `(${tag}:${w.toFixed(1)})`;
-    span.title = 'click to cycle weight';
-    span.onclick = ()=>{
-      const steps = [0.6,0.8,1.0,1.2,1.4];
-      let idx = steps.indexOf(w);
-      w = steps[(idx+1) % steps.length];
-      tagWeights[tag] = w;
-      renderTagOutput();
-    };
-    posBox.appendChild(span);
-    if(i < Object.keys(tagWeights).length - 1) posBox.appendChild(document.createTextNode(', '));
-  });
-}
-
-function copyBox(id){
-  const box = document.getElementById(id);
-  const text = box.innerText;
-  navigator.clipboard.writeText(text).then(()=>{
-    const btn = event.target;
-    const orig = btn.textContent;
-    btn.textContent = 'Copied';
-    setTimeout(()=>btn.textContent = orig, 1200);
-  });
-}
-
-function copyBoth(){
-  const positive = document.getElementById('posOutput').innerText;
-  const negative = document.getElementById('negOutput').innerText;
-  const combined = `Positive:\n${positive}\n\nNegative:\n${negative}`;
-  navigator.clipboard.writeText(combined).then(()=>{
-    const btn = event.target;
-    const orig = btn.textContent;
-    btn.textContent = 'Copied';
-    setTimeout(()=>btn.textContent = orig, 1200);
-  });
-}
-
-// Word-count guidance tied to Krea 2's documented prompt-length bands:
-// exploration ~5-20 words, controlled image ~30-80, complex scene ~80-140.
 function updateWordCount(){
-  const el = document.getElementById('wordCountLabel');
-  if(!el) return;
-  const text = document.getElementById('posOutput').innerText || '';
-  const trimmed = text.trim();
-  if(!trimmed || trimmed.includes('Fill in fields')){ el.textContent = ''; el.className = 'hint'; return; }
-  const words = trimmed.split(/\s+/).length;
+  const el = $('wordCountLabel');
+  const text = currentPositive();
+  if(!text){ el.textContent=''; el.className='hint'; return; }
+  const words = text.split(/\s+/).length;
   let tier;
   if(words <= 20) tier = 'exploration range';
   else if(words <= 80) tier = 'controlled-image range';
   else if(words <= 140) tier = 'complex-scene range';
-  else tier = "past the documented complex-scene ceiling — may dilute attention on longer-context encoders";
-  el.textContent = `${words} words · ${tier}`;
-  el.className = 'hint' + (words > 140 ? ' word-count-warn' : '');
+  else tier = 'past the documented complex-scene ceiling';
+  el.textContent = words + ' words · ~' + Math.ceil(text.length/4) + ' tokens · ' + tier;
+  el.className = 'hint' + (words > 140 ? ' word-count-warn':'');
 }
-document.getElementById('posOutput').addEventListener('input', updateWordCount);
 
-// Ctrl/Cmd+Enter builds the prompt from anywhere in the form.
-document.addEventListener('keydown', (e)=>{
-  if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
-    e.preventDefault();
-    buildPrompt();
+// ============================================================ linter ----
+function renderLint(){
+  const lint = PF.lintCompiled(S, lastCompiled);
+  const pill = $('healthPill');
+  pill.textContent = 'Health: ' + lint.score + '/100';
+  pill.className = 'pill ' + (lint.score >= 85 ? 'good' : lint.score >= 60 ? 'mid' : 'bad');
+  $('lintScoreSide').textContent = lint.score + '/100 · ' + lint.warnings.length + ' finding(s)';
+  const list = $('lintList');
+  list.innerHTML = '';
+  if(!lint.warnings.length){
+    list.innerHTML = '<p class="hint" style="padding-left:0;">No warnings. The linter never edits your prompt — it only points.</p>';
+    return;
   }
+  lint.warnings.forEach(w=>{
+    const d = document.createElement('div');
+    d.className = 'lintline ' + w.severity;
+    d.textContent = w.message;
+    if(w.suggestion){
+      const s = document.createElement('span');
+      s.className = 'sug';
+      s.textContent = '→ ' + w.suggestion;
+      d.appendChild(s);
+    }
+    list.appendChild(d);
+  });
+}
+function scrollToLint(){ $('lintHeader').scrollIntoView({behavior:'smooth'}); }
+
+function renderInspector(){
+  const m = lastCompiled.metadata.counts;
+  const el = $('inspector');
+  const negLen = lastCompiled.negative.length;
+  const p = PF.getProfile(S.settings.modelProfile);
+  el.innerHTML = '';
+  [
+    ['positive', m.positiveChars + ' chars'],
+    ['words', m.positiveWords],
+    ['~tokens', m.approxTokens],
+    ['negative', negLen + ' chars'],
+    ['phrases', m.activeFields],
+    ['scenes on', S.scenes.filter(s=>s.enabled).length + '/' + S.scenes.length],
+    ['profile', p.label],
+    ['soft limit', p.maxSoftLength + ' chars'],
+  ].forEach(([k,v])=>{
+    const s = document.createElement('span');
+    s.className = 'metric';
+    s.innerHTML = k + ': <b></b>';
+    s.querySelector('b').textContent = v;
+    el.appendChild(s);
+  });
+}
+
+// ===================================================== negative cleaner ----
+function renderNegGroups(){
+  const box = $('negGroups');
+  box.innerHTML = '';
+  const groups = PF.groupNegative(lastCompiled.negative);
+  const off = S.settings.negativeCategoriesOff || [];
+  PF.NEG_CATEGORIES.forEach(cat=>{
+    const terms = groups[cat.id];
+    if(!terms || !terms.length) return;
+    const d = document.createElement('div');
+    d.className = 'negcat' + (off.includes(cat.id)?' off':'');
+    const name = document.createElement('div');
+    name.className = 'catname';
+    const cb = document.createElement('input');
+    cb.type='checkbox'; cb.checked = !off.includes(cat.id);
+    cb.onchange = ()=>{
+      const idx = (S.settings.negativeCategoriesOff||[]).indexOf(cat.id);
+      if(cb.checked && idx>-1) S.settings.negativeCategoriesOff.splice(idx,1);
+      else if(!cb.checked && idx===-1) (S.settings.negativeCategoriesOff=S.settings.negativeCategoriesOff||[]).push(cat.id);
+      commit();
+    };
+    name.appendChild(cb);
+    name.appendChild(document.createTextNode(cat.label + ' (' + terms.length + ')'));
+    d.appendChild(name);
+    terms.forEach(t=>{
+      const c = document.createElement('span');
+      c.className = 'negchip';
+      c.textContent = t;
+      d.appendChild(c);
+    });
+    box.appendChild(d);
+  });
+  if(groups.custom.length){
+    const d = document.createElement('div');
+    d.className = 'negcat';
+    d.innerHTML = '<div class="catname">Your custom terms (always kept)</div>';
+    groups.custom.forEach(t=>{
+      const c = document.createElement('span');
+      c.className = 'negchip';
+      c.textContent = t;
+      d.appendChild(c);
+    });
+    box.appendChild(d);
+  }
+}
+
+// ========================================================== variations ----
+function openVariants(){
+  const n = Math.max(1, Math.min(20, parseInt($('variantCount').value)||4));
+  const variants = PF.generateVariants(S, {}, n);
+  const list = $('variantList');
+  list.innerHTML = '';
+  variants.forEach(v=>{
+    const row = document.createElement('div');
+    row.className = 'listrow';
+    row.innerHTML = '<div class="meta">Variant ' + v.index + '</div>';
+    const txt = document.createElement('div');
+    txt.className = 'txt';
+    txt.textContent = v.positive;
+    row.appendChild(txt);
+    const btns = document.createElement('div');
+    btns.className = 'btn-row'; btns.style.paddingLeft='0';
+    const copy = document.createElement('button');
+    copy.className='mini-btn'; copy.textContent='Copy';
+    copy.onclick = ()=>copyText(v.positive, copy);
+    const toScene = document.createElement('button');
+    toScene.className='mini-btn'; toScene.textContent='→ new scene';
+    toScene.onclick = ()=>{
+      const src = PF.getActiveScene(v.state);
+      const scene = PF.makeScene({
+        name: 'Variant ' + v.index,
+        fields: src.fields.map(f=>({type:f.type, label:f.label, text:f.text, enabled:f.enabled, locked:f.locked, weight:f.weight})),
+        negativeFields: src.negativeFields.map(f=>({type:'negative', text:f.text, enabled:f.enabled})),
+      });
+      S.scenes.push(scene);
+      renderSceneBar(); commit();
+      toast('Variant added as "' + scene.name + '"');
+    };
+    btns.appendChild(copy); btns.appendChild(toScene);
+    row.appendChild(btns);
+    list.appendChild(row);
+  });
+  $('variantOverlay').classList.add('open');
+}
+function closeOverlay(id){ $(id).classList.remove('open'); }
+
+// =========================================================== libraries ----
+function saveLibraryItem(){
+  const kind = $('libKind').value;
+  const name = $('libName').value.trim();
+  if(!name){ toast('Give it a name first.'); return; }
+  const {fields, negs} = tabCollections();
+  const item = {
+    id: PF.uid('lib'),
+    name,
+    kind,
+    fields: fields.filter(f=>f.text.trim()).map(f=>({type:f.type, label:f.label, text:f.text, locked:f.locked, weight:f.weight})),
+    negative: negs.filter(f=>f.text.trim()).map(f=>f.text).join(', '),
+    tags: [],
+    favorite: false,
+    notes: '',
+    createdAt: new Date().toISOString(),
+  };
+  if(!item.fields.length && !item.negative){ toast('Nothing to save on this tab.'); return; }
+  S.libraries[kind].push(item);
+  $('libName').value = '';
+  renderLibraries(); persist();
+  toast('Saved to ' + kind);
+}
+
+function applyLibraryItem(item){
+  const mode = $('libApplyMode').value;
+  let target;
+  if(mode === 'insert_global'){ target = S.global.fields; }
+  else {
+    const scene = currentTabScene() || activeSceneObj();
+    target = scene.fields;
+  }
+  (item.fields||[]).forEach(fSpec=>{
+    const existing = target.find(x=>x.type===fSpec.type);
+    if(mode === 'replace' && existing){
+      if(existing.locked){ toast('Skipped locked field: ' + existing.label); return; }
+      existing.text = fSpec.text;
+    } else if(mode === 'append' && existing){
+      existing.text = existing.text.trim() ? existing.text + ', ' + fSpec.text : fSpec.text;
+    } else {
+      target.push(PF.makeField({type:fSpec.type, label:fSpec.label, text:fSpec.text, weight:fSpec.weight||1,
+        scope: mode==='insert_global' ? 'global':'scene'}));
+    }
+  });
+  if(item.negative){
+    const negTarget = mode==='insert_global' ? S.global.negativeFields : (currentTabScene()||activeSceneObj()).negativeFields;
+    negTarget.push(PF.makeField({type:'negative', text:item.negative, label:item.name + ' negatives'}));
+  }
+  renderFieldStacks(); commit();
+  toast('Applied "' + item.name + '"');
+}
+
+function renderLibraries(){
+  const el = $('libList');
+  el.innerHTML = '';
+  const q = ($('libSearch').value||'').toLowerCase();
+  let any = false;
+  Object.keys(S.libraries).forEach(kind=>{
+    S.libraries[kind].forEach(item=>{
+      const hay = (item.name + ' ' + (item.fields||[]).map(f=>f.text).join(' ')).toLowerCase();
+      if(q && hay.indexOf(q)===-1) return;
+      any = true;
+      const row = document.createElement('div');
+      row.className = 'listrow';
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = kind + (item.kind==='legacy_preset' ? ' · migrated v1 preset':'');
+      const fav = document.createElement('span');
+      fav.className = 'fav' + (item.favorite?' on':'');
+      fav.textContent = ' ★';
+      fav.title = 'favorite';
+      fav.onclick = ()=>{ item.favorite = !item.favorite; renderLibraries(); persist(); };
+      meta.appendChild(fav);
+      row.appendChild(meta);
+      const txt = document.createElement('div');
+      txt.className = 'txt';
+      txt.textContent = item.name + ' — ' +
+        ((item.fields||[]).map(f=>f.text).join(' · ').slice(0,90) || '(negatives only)');
+      row.appendChild(txt);
+      const btns = document.createElement('div');
+      btns.className='btn-row'; btns.style.paddingLeft='0';
+      const apply = document.createElement('button');
+      apply.className='mini-btn'; apply.textContent='Apply';
+      apply.onclick = ()=>applyLibraryItem(item);
+      const del = document.createElement('button');
+      del.className='mini-btn danger'; del.textContent='×';
+      del.onclick = ()=>{
+        S.libraries[kind] = S.libraries[kind].filter(x=>x.id!==item.id);
+        renderLibraries(); persist();
+      };
+      btns.appendChild(apply); btns.appendChild(del);
+      row.appendChild(btns);
+      el.appendChild(row);
+    });
+  });
+  if(!any) el.innerHTML = '<p class="hint" style="padding-left:0;">Nothing saved yet — build a character/style/camera setup on a tab and save it.</p>';
+}
+
+// ============================================================= history ----
+function pushHistory(positive, negative){
+  if(!positive || !positive.trim()) return;
+  if(S.history.length && S.history[0].positive===positive && S.history[0].negative===negative) return;
+  S.history.unshift({
+    id: PF.uid('hist'),
+    createdAt: new Date().toISOString(),
+    positive, negative,
+    modelProfile: S.settings.modelProfile,
+    notes: '', rating: 0, favorite: false,
+    state: strippedState(),
+    comfy: {workflowHash:'', seed:null, sampler:'', steps:null, cfg:null, model:''},
+    thumbnail: null,
+  });
+  if(S.history.length > 50) S.history.length = 50;
+  persist();
+  renderHistory();
+}
+
+function renderHistory(){
+  const el = $('historyList');
+  el.innerHTML = '';
+  const favOnly = $('histFavOnly').checked;
+  const entries = S.history.filter(h=>!favOnly || h.favorite);
+  if(!entries.length){
+    el.innerHTML = '<p class="hint" style="padding-left:0;">No history yet — click "Build prompt" to log one.</p>';
+    return;
+  }
+  entries.slice(0, 20).forEach(h=>{
+    const row = document.createElement('div');
+    row.className = 'listrow';
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = new Date(h.createdAt).toLocaleString() + ' · ' + h.modelProfile;
+    const fav = document.createElement('span');
+    fav.className = 'fav' + (h.favorite?' on':'');
+    fav.textContent = ' ★';
+    fav.onclick = ()=>{ h.favorite = !h.favorite; renderHistory(); persist(); };
+    meta.appendChild(fav);
+    row.appendChild(meta);
+    const txt = document.createElement('div');
+    txt.className='txt';
+    txt.textContent = h.positive.length > 90 ? h.positive.slice(0,90)+'…' : h.positive;
+    row.appendChild(txt);
+    const btns = document.createElement('div');
+    btns.className='btn-row'; btns.style.paddingLeft='0';
+    const mk = (t, fn)=>{
+      const b=document.createElement('button');
+      b.className='mini-btn'; b.textContent=t; b.onclick=fn;
+      btns.appendChild(b);
+    };
+    mk('Load text', ()=>{
+      $('posOutput').contentEditable = true;
+      $('posOutput').innerText = h.positive;
+      $('negOutput').innerText = h.negative;
+      outputDirty = true;
+      updateWordCount();
+      toast('Loaded into output boxes (fields unchanged).');
+    });
+    if(h.state) mk('Restore state', ()=>{
+      if(!confirm('Restore full scene/field state from this history entry? Current fields will be replaced (history and snapshots are kept).')) return;
+      restoreStrippedState(h.state);
+    });
+    mk('Diff', ()=>showDiff(h));
+    mk('Notes', ()=>{
+      const v = prompt('Notes for this entry:', h.notes||'');
+      if(v!==null){ h.notes = v; persist(); }
+    });
+    mk('×', ()=>{ S.history = S.history.filter(x=>x.id!==h.id); renderHistory(); persist(); });
+    row.appendChild(btns);
+    el.appendChild(row);
+  });
+}
+
+function restoreStrippedState(stripped){
+  const keepHist = S.history, keepSnaps = S.snapshots;
+  const res = PF.validateAndRepair(stripped);
+  S = res.state;
+  S.history = keepHist;
+  S.snapshots = keepSnaps;
+  uiTab = 'global';
+  renderAll();
+  toast('State restored.');
+}
+
+function showDiff(h){
+  const d = PF.diffPrompts(h.positive, currentPositive());
+  const box = $('diffBox');
+  box.innerHTML = '';
+  if(!d.added.length && !d.removed.length){
+    box.textContent = 'No phrase-level differences.';
+  } else {
+    d.removed.forEach(p=>{
+      const s = document.createElement('span');
+      s.className='tag diffrem'; s.textContent = p;
+      box.appendChild(s);
+    });
+    d.added.forEach(p=>{
+      const s = document.createElement('span');
+      s.className='tag diffadd'; s.textContent = '+ ' + p;
+      box.appendChild(s);
+    });
+  }
+  $('diffPanel').style.display = 'block';
+  $('diffPanel').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function clearHistoryAll(){
+  if(!confirm('Delete all prompt history? This cannot be undone.')) return;
+  S.history = [];
+  renderHistory(); persist();
+}
+
+// =========================================================== snapshots ----
+function createSnapshot(){
+  const name = $('snapName').value.trim() || 'snapshot ' + new Date().toLocaleString();
+  S.snapshots.unshift({
+    id: PF.uid('snap'), name, createdAt: new Date().toISOString(),
+    notes:'', milestone:false, state: strippedState(),
+  });
+  $('snapName').value='';
+  renderSnapshots(); persist();
+  toast('Snapshot saved.');
+}
+function renderSnapshots(){
+  const el = $('snapList');
+  el.innerHTML = '';
+  if(!S.snapshots.length){
+    el.innerHTML = '<p class="hint" style="padding-left:0;">No snapshots yet. Snapshots are full copies of your scenes/fields you can return to.</p>';
+    return;
+  }
+  S.snapshots.forEach(sn=>{
+    const row = document.createElement('div');
+    row.className='listrow';
+    row.innerHTML = '<div class="meta">' + new Date(sn.createdAt).toLocaleString() + '</div>';
+    const txt = document.createElement('div');
+    txt.className='txt';
+    txt.textContent = (sn.milestone?'◆ ':'') + sn.name;
+    row.appendChild(txt);
+    const btns = document.createElement('div');
+    btns.className='btn-row'; btns.style.paddingLeft='0';
+    const mk=(t,fn)=>{const b=document.createElement('button'); b.className='mini-btn'; b.textContent=t; b.onclick=fn; btns.appendChild(b);};
+    mk('Restore', ()=>{
+      if(!confirm('Restore snapshot "'+sn.name+'"? Later snapshots are kept.')) return;
+      restoreStrippedState(sn.state);
+    });
+    mk(sn.milestone?'Unmark':'Milestone', ()=>{ sn.milestone=!sn.milestone; renderSnapshots(); persist(); });
+    mk('Export', ()=>download('promptforge-snapshot-' + sn.name.replace(/[^\w-]+/g,'_') + '.json', PF.exportProject(sn.state)));
+    mk('×', ()=>{ S.snapshots = S.snapshots.filter(x=>x.id!==sn.id); renderSnapshots(); persist(); });
+    row.appendChild(btns);
+    el.appendChild(row);
+  });
+}
+
+// ======================================================= import/export ----
+function exportProjectFile(){
+  download('promptforge-project-' + new Date().toISOString().slice(0,10) + '.json',
+    PF.exportProject(strippedState()));
+}
+function exportTxt(){
+  const text = 'Positive:\n' + currentPositive() + '\n\nNegative:\n' + currentNegative() + '\n';
+  const blob = new Blob([text], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='promptforge-prompt.txt'; a.click();
+  URL.revokeObjectURL(url);
+}
+function exportPresetPackFile(){
+  const items = [];
+  Object.keys(S.libraries).forEach(kind=>{
+    S.libraries[kind].forEach(item=>{
+      items.push({id:item.id, type:kind, name:item.name, fields:item.fields||[],
+        negative:item.negative||'', tags:item.tags||[]});
+    });
+  });
+  if(!items.length){ toast('No library items to export.'); return; }
+  download('promptforge-presets-' + new Date().toISOString().slice(0,10) + '.json',
+    PF.exportPresetPack('Prompt Forge presets', items, [S.settings.modelProfile]));
+}
+function exportBackupAll(){
+  const backup = {
+    app:'promptforge', kind:'backup', schema:PF.STATE_VERSION,
+    exportedAt:new Date().toISOString(),
+    state:S,
+    comfy_url: localStorage.getItem('promptforge_comfy_url')||'',
+    comfy_workflow: localStorage.getItem('promptforge_comfy_workflow')||'',
+    bridge_url: localStorage.getItem('promptforge_bridge_url')||'',
+    legacy: {
+      draft: localStorage.getItem('promptforge_draft')||null,
+      presets: localStorage.getItem('promptforge_presets')||null,
+      history: localStorage.getItem('promptforge_history')||null,
+      segments: localStorage.getItem('promptforge_segments')||null,
+    },
+  };
+  download('promptforge-backup-' + new Date().toISOString().slice(0,10) + '.json',
+    JSON.stringify(backup, null, 2));
+}
+
+let importKind = 'project';
+function pickImport(kind){ importKind = kind; $('importFile').click(); }
+function handleImportFile(event){
+  const file = event.target.files[0];
+  const statusEl = $('backupStatus');
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      if(importKind === 'pack'){
+        const pack = PF.importPresetPack(reader.result);
+        let added = 0, skipped = 0;
+        pack.items.forEach(item=>{
+          const kind = S.libraries[item.type] ? item.type : 'templates';
+          if(S.libraries[kind].some(x=>x.id===item.id)){ skipped++; return; }
+          S.libraries[kind].push({
+            id:item.id||PF.uid('lib'), name:item.name||'imported', kind,
+            fields:item.fields||[], negative:item.negative||'', tags:item.tags||[],
+            favorite:false, notes:'imported from pack "'+ (pack.name||'') +'"',
+          });
+          added++;
+        });
+        renderLibraries(); persist();
+        statusEl.className='status ok';
+        statusEl.textContent = 'Pack imported: ' + added + ' added' + (skipped? ', ' + skipped + ' duplicate id(s) skipped':'') + '.';
+      } else if(importKind === 'backup'){
+        const data = JSON.parse(reader.result);
+        if(data.kind==='backup' && data.state){
+          const res = PF.validateAndRepair(data.state);
+          S = res.state;
+          if(data.comfy_url) localStorage.setItem('promptforge_comfy_url', data.comfy_url);
+          if(data.comfy_workflow) localStorage.setItem('promptforge_comfy_workflow', data.comfy_workflow);
+          if(data.bridge_url) localStorage.setItem('promptforge_bridge_url', data.bridge_url);
+          uiTab = 'global';
+          renderAll(); persist();
+          statusEl.className='status ok';
+          statusEl.textContent = 'Backup restored' + (res.issues.length ? ' (repairs: '+res.issues.length+' — see console)':'') + '.';
+          if(res.issues.length) console.warn(res.issues);
+        } else {
+          throw new Error('Not a Prompt Forge backup file.');
+        }
+      } else {
+        const res = PF.importProject(reader.result);
+        const keepHist = S.history, keepSnaps = S.snapshots;
+        S = res.state;
+        if(!S.history.length) S.history = keepHist;
+        if(!S.snapshots.length) S.snapshots = keepSnaps;
+        uiTab = 'global';
+        renderAll(); persist();
+        statusEl.className='status ok';
+        statusEl.textContent = 'Project imported' + (res.issues.length ? ' (repaired '+res.issues.length+' issue(s) — see console)':'') + '.';
+        if(res.issues.length) console.warn(res.issues);
+      }
+    }catch(e){
+      statusEl.className='status err';
+      statusEl.textContent = 'Import failed: ' + e.message;
+    }
+  };
+  reader.readAsText(file);
+  event.target.value='';
+}
+
+// ================================================================ copy ----
+function copyText(text, btn){
+  const done = ()=>{
+    if(btn){
+      const orig = btn.textContent;
+      btn.textContent = 'Copied';
+      setTimeout(()=>btn.textContent=orig, 1200);
+    }
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(()=>{ fallbackCopy(text); done(); });
+  } else {
+    fallbackCopy(text); done();
+  }
+}
+function fallbackCopy(text){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  ta.remove();
+}
+function copyBox(id, ev){ copyText($(id).innerText, ev && ev.target); }
+function copyBoth(ev){
+  copyText('Positive:\n' + currentPositive() + '\n\nNegative:\n' + currentNegative(), ev && ev.target);
+}
+
+// ======================================================== inspiration ----
+const inspirationPools = {
+  subject:["lone astronaut","feral fox spirit","cybernetic monk","rain-soaked detective","ancient library keeper"],
+  style:["ukiyo-e woodblock","synthwave","gothic oil painting","cel-shaded anime","brutalist concept art"],
+  medium:["digital painting","35mm film photo","watercolor","3d render, octane","ink wash"],
+  lighting:["golden hour","harsh studio strobe","bioluminescent glow","overcast diffuse light","neon backlight"],
+  composition:["extreme close-up","wide establishing shot","dutch angle","symmetrical framing","over-the-shoulder"],
+  quality:["masterpiece, best quality, highly detailed","8k uhd, sharp focus","award winning"],
+  background:["dense misty forest","neon-lit alley at night","open desert horizon","cluttered workshop interior","crumbling stone ruins"],
+  action:["mid-leap","casting a spell","reading by lamplight","sprinting through rain","standing at a cliff edge"],
+};
+function randomizeScene(){
+  const pick = arr=>arr[Math.floor(Math.random()*arr.length)];
+  const {fields} = tabCollections();
+  const globalFields = S.global.fields;
+  Object.keys(inspirationPools).forEach(type=>{
+    let f = fields.find(x=>x.type===type && !x.locked);
+    if(!f) f = globalFields.find(x=>x.type===type && !x.locked);
+    if(f) f.text = pick(inspirationPools[type]);
+  });
+  renderFieldStacks(); commit();
+  pushHistory(lastCompiled ? lastCompiled.positive : '', lastCompiled ? lastCompiled.negative : '');
+}
+
+// ================================================================= LLM ----
+$('selBackend').addEventListener('change', e=>{
+  $('localConfig').style.display = e.target.value==='local' ? 'block':'none';
+  $('anthropicConfig').style.display = e.target.value==='anthropic' ? 'block':'none';
 });
 
-const genrePool = [
-  'nature and wildlife', 'urban noir / detective', 'cosmic / deep space', 'underwater / oceanic',
-  'historical / period piece', 'steampunk', 'post-apocalyptic wasteland', 'mythology and folklore',
-  'quiet slice-of-life', 'gothic horror', 'desert and wasteland', 'arctic / frozen landscape',
-  'dense jungle', 'industrial / brutalist architecture', 'pastoral countryside', 'festival and celebration',
-  'surreal / abstract', 'high fantasy', 'noir cyberpunk', 'solarpunk / utopian eco-future'
-];
-
-async function generateFullDraft(){
-  const statusEl = document.getElementById('draftStatus');
-  statusEl.className = 'status';
-  statusEl.textContent = 'Generating...';
-
-  let theme = document.getElementById('f_theme').value.trim();
-  if(!theme){
-    theme = genrePool[Math.floor(Math.random() * genrePool.length)];
-  }
-  const styleNote = syntaxMode === 'tags'
-    ? 'Field values should be short comma-separated Danbooru-style tags/phrases (2-5 words each), not full sentences.'
-    : 'Field values should be short natural-language phrases (a few words each), not full sentences.';
-
-  const sys = `You invent creative Stable Diffusion / ComfyUI image concepts. ${styleNote}
-Every field value must be literal, concrete visual description — no metaphor, simile, or narration ("as if", "like", "living", "defying", "bowing to", etc are forbidden). Each field could stand alone as a thing a camera could photograph.
-Respond with ONLY a single valid JSON object, no markdown fences, no explanation, matching exactly this shape:
-{"subject":"","style":"","medium":"","lighting":"","comp":"","quality":"","background":"","negative_additions":"","has_character":false,"gender":"","age":""}
-- "gender" must be one of "female","male","nonbinary","" (empty if has_character is false or unspecified)
-- "age" must be one of "young_adult","adult","middle_aged","elderly","" 
-- "negative_additions" is a short comma-separated list of extra things to avoid, beyond the usual bad-anatomy/blurry basics, or "" if none needed
-- Keep every adult; do not invent a minor.`;
-
-  const lockContext = Object.entries(locks)
-    .filter(([,v])=>v)
-    .map(([field])=>{
-      const valMap = {
-        subject: document.getElementById('f_subject').value,
-        style: document.getElementById('f_style').value,
-        medium: document.getElementById('f_medium').value,
-        lighting: document.getElementById('f_lighting').value,
-        comp: document.getElementById('f_comp').value,
-        quality: document.getElementById('f_quality').value,
-        background: document.getElementById('f_background').value,
-        negative: document.getElementById('f_negative').value,
-        character: document.getElementById('f_hasChar').checked
-          ? `${document.getElementById('f_gender').value || 'unspecified gender'}, ${document.getElementById('f_age').value || 'unspecified age'}`
-          : 'no character'
-      };
-      return `${field}: "${valMap[field]}"`;
-    }).join('; ');
-
-  const sysFull = lockContext
-    ? `${sys}\nThese fields are already fixed and will not be changed — invent the rest so it stays coherent with them, but you don't need to repeat their values in your JSON: ${lockContext}.`
-    : sys;
-
-  const userMsg = `Invent one original image concept in this space: ${theme}. Don't default to cyberpunk or sci-fi unless that's the genre given.`;
-
-  try{
-    let raw;
-    if(backend === 'local'){
-      raw = await callLocal(sysFull, userMsg);
-    } else {
-      raw = await callAnthropic(sysFull, userMsg);
-    }
-
-    const match = raw.match(/\{[\s\S]*\}/);
-    if(!match) throw new Error('model did not return JSON — try again or switch models');
-    const data = JSON.parse(match[0]);
-
-    if(!locks.subject) document.getElementById('f_subject').value = data.subject || '';
-    if(!locks.style) document.getElementById('f_style').value = data.style || '';
-    if(!locks.medium) document.getElementById('f_medium').value = data.medium || '';
-    if(!locks.lighting) document.getElementById('f_lighting').value = data.lighting || '';
-    if(!locks.comp) document.getElementById('f_comp').value = data.comp || '';
-    if(!locks.quality) document.getElementById('f_quality').value = data.quality || '';
-    if(!locks.background) document.getElementById('f_background').value = data.background || '';
-
-    if(!locks.negative && data.negative_additions){
-      const negField = document.getElementById('f_negative');
-      const current = negField.value.trim();
-      negField.value = current ? current + ', ' + data.negative_additions : data.negative_additions;
-    }
-
-    if(!locks.character){
-      const hasChar = !!data.has_character;
-      document.getElementById('f_hasChar').checked = hasChar;
-      document.getElementById('charOptions').style.display = hasChar ? 'flex' : 'none';
-      if(hasChar){
-        document.getElementById('f_gender').value = ['female','male','nonbinary'].includes(data.gender) ? data.gender : '';
-        document.getElementById('f_age').value = ['young_adult','adult','middle_aged','elderly'].includes(data.age) ? data.age : '';
-      }
-    }
-
-    buildPrompt();
-    statusEl.className = 'status ok';
-    const lockedList = lockedFieldSummary();
-    const base = document.getElementById('f_theme').value.trim() ? 'Draft generated.' : `Draft generated (genre: ${theme}).`;
-    statusEl.textContent = lockedList.length ? `${base} Kept locked: ${lockedList.join(', ')}.` : base;
-  } catch(err){
-    statusEl.className = 'status err';
-    if(isNetworkError(err)){
-      statusEl.textContent = 'Failed to fetch — check backend config / CORS.';
-    } else {
-      statusEl.textContent = 'Error: ' + err.message;
-    }
-    console.error(err);
-  }
-}
-
-// ---------- LLM enhance ----------
-async function enhancePrompt(){
-  const statusEl = document.getElementById('llmStatus');
-  statusEl.className = 'status';
-  statusEl.textContent = 'Sending...';
-
-  const draft = document.getElementById('posOutput').innerText;
-  const theme = document.getElementById('f_theme').value.trim();
-  const themeNote = theme
-    ? `\nThe user's stated idea/concept for this piece: "${theme}". This is the actual creative direction — if it implies a specific action, pose, scenario, or event (e.g. "mid-jump dodging an explosion", "casting a spell", "collapsing in exhaustion"), make sure the enhanced prompt actually depicts that concretely rather than defaulting to a static pose. Don't lose or genericize what's specific about it.`
-    : '';
-  const lockedList = lockedFieldSummary();
-  const lockNote = lockedList.length
-    ? `\nThe following elements are locked by the user and must appear in your output essentially unchanged, word-for-word where possible: ${lockedList.map(f=>{
-        const valMap = {
-          subject: document.getElementById('f_subject').value, style: document.getElementById('f_style').value,
-          medium: document.getElementById('f_medium').value, lighting: document.getElementById('f_lighting').value,
-          comp: document.getElementById('f_comp').value, quality: document.getElementById('f_quality').value,
-          background: document.getElementById('f_background').value,
-          negative: document.getElementById('f_negative').value,
-          character: document.getElementById('f_hasChar').checked ? `${document.getElementById('f_gender').value||'unspecified gender'}, ${document.getElementById('f_age').value||'unspecified age'}` : ''
-        };
-        return `${f} = "${valMap[f]}"`;
-      }).join('; ')}. This is a best-effort instruction, not a hard guarantee — but treat it as a strong constraint.`
-    : '';
-  const styleInstruction = syntaxMode === 'tags'
-    ? 'Output ONLY a comma-separated Danbooru-style tag prompt suitable for SDXL/Pony/Illustrious checkpoints. No explanation, no markdown.'
-    : 'Output ONLY a natural-language descriptive prompt suitable for Flux/SD3. No explanation, no markdown.';
-  const sys = `You are an expert Stable Diffusion / ComfyUI prompt engineer. Expand and refine the given draft into a stronger image generation prompt. ${styleInstruction}
-Hard rules:
-- Literal, concrete visual description only. No metaphor, simile, or narration ("as if", "like", "seems to", "defying", "living scripture", "bowing to her power", etc are all forbidden).
-- Every phrase must describe something a camera or renderer could directly depict. If a concept has no direct visual form, cut it or replace it with a concrete equivalent (e.g. "glowing eyes" instead of "burns with otherworldly knowledge").
-- No fixed word limit — expand as much as the concept actually needs, including a specific scenario/action from the idea below if one is given. But don't pad with filler just to sound longer: every added phrase must add a distinct, concrete visual detail, still as a list of descriptors, not a narrated scene.
-- If a style (e.g. anime, photoreal) is already present in the draft, lead with it as the first descriptor so it isn't fighting other stylistic language for control.${themeNote}${lockNote}`;
-
-  try{
-    let result;
-    if(backend === 'local'){
-      result = await callLocal(sys, draft);
-    } else {
-      result = await callAnthropic(sys, draft);
-    }
-    document.getElementById('posOutput').contentEditable = true;
-    document.getElementById('posOutput').innerText = result.trim();
-    statusEl.className = 'status ok';
-    statusEl.textContent = 'Done.';
-    pushHistory(result.trim(), document.getElementById('negOutput').innerText);
-  } catch(err){
-    statusEl.className = 'status err';
-    if(isNetworkError(err)){
-      statusEl.textContent = 'Failed to fetch — server unreachable, or it responded to the preflight without proper CORS headers (Access-Control-Allow-Origin/Methods/Headers). Check your local server\'s CORS setting.';
-    } else {
-      statusEl.textContent = 'Error: ' + err.message;
-    }
-    console.error(err);
-  }
-}
-
-async function callLocal(sys, draft){
-  const raw = document.getElementById('localUrl').value.trim();
+async function callLocal(sys, user){
+  const raw = $('localUrl').value.trim();
   let base;
-  try{
-    base = new URL(raw).origin; // strip any path the user left in the field, keep only scheme+host+port
-  } catch(e){
-    throw new Error('base URL is not valid (need e.g. http://127.0.0.1:1234)');
-  }
-  const model = document.getElementById('localModel').value.trim();
-  const format = document.getElementById('localFormat').value;
-
-  if(format === 'ollama'){
-    const res = await fetch(base + '/api/chat', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model, stream:false,
-        messages:[{role:'system',content:sys},{role:'user',content:draft}]
-      })
-    });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    return data.message?.content || JSON.stringify(data);
-  } else {
-    const res = await fetch(base + '/v1/chat/completions', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model, stream:false,
-        messages:[{role:'system',content:sys},{role:'user',content:draft}]
-      })
-    });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || JSON.stringify(data);
-  }
+  try{ base = new URL(raw).origin; }
+  catch(e){ throw new Error('base URL is not valid (need e.g. http://127.0.0.1:1234)'); }
+  const model = $('localModel').value.trim();
+  const format = $('localFormat').value;
+  const path = format==='ollama' ? '/api/chat' : '/v1/chat/completions';
+  const res = await fetch(base + path, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({model, stream:false, messages:[{role:'system',content:sys},{role:'user',content:user}]}),
+  });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  return format==='ollama'
+    ? (data.message && data.message.content) || JSON.stringify(data)
+    : (data.choices && data.choices[0] && data.choices[0].message.content) || JSON.stringify(data);
 }
-
-async function callAnthropic(sys, draft){
-  const key = document.getElementById('anthropicKey').value.trim();
-  const model = document.getElementById('anthropicModel').value.trim();
+async function callAnthropic(sys, user){
+  const key = $('anthropicKey').value.trim();
+  const model = $('anthropicModel').value.trim();
   if(!key) throw new Error('no API key set');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method:'POST',
     headers:{
-      'Content-Type':'application/json',
-      'x-api-key': key,
+      'Content-Type':'application/json', 'x-api-key':key,
       'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true'
+      'anthropic-dangerous-direct-browser-access':'true',
     },
-    body: JSON.stringify({
-      model, max_tokens:400,
-      system: sys,
-      messages:[{role:'user', content: draft}]
-    })
+    body: JSON.stringify({model, max_tokens:600, system:sys, messages:[{role:'user', content:user}]}),
   });
   if(!res.ok) throw new Error('HTTP ' + res.status);
   const data = await res.json();
-  return (data.content || []).map(b=>b.text||'').join('\n');
+  return (data.content||[]).map(b=>b.text||'').join('\n');
+}
+async function callLLM(sys, user){
+  return $('selBackend').value==='local' ? callLocal(sys, user) : callAnthropic(sys, user);
 }
 
-// ---------- presets (localStorage, this is a standalone local file) ----------
-function getPresets(){
-  try{ return JSON.parse(localStorage.getItem('promptforge_presets') || '{}'); }
-  catch{ return {}; }
-}
-function setPresets(p){ localStorage.setItem('promptforge_presets', JSON.stringify(p)); }
-
-function savePreset(){
-  const name = document.getElementById('presetName').value.trim();
-  if(!name) return;
-  const presets = getPresets();
-  presets[name] = {
-    subject: document.getElementById('f_subject').value,
-    style: document.getElementById('f_style').value,
-    medium: document.getElementById('f_medium').value,
-    lighting: document.getElementById('f_lighting').value,
-    comp: document.getElementById('f_comp').value,
-    quality: document.getElementById('f_quality').value,
-    background: document.getElementById('f_background').value,
-    negative: document.getElementById('f_negative').value,
-    hasChar: document.getElementById('f_hasChar').checked,
-    gender: document.getElementById('f_gender').value,
-    age: document.getElementById('f_age').value,
-    locks: {...locks},
-    syntaxMode
-  };
-  setPresets(presets);
-  document.getElementById('presetName').value = '';
-  renderPresets();
-}
-
-function loadPreset(name){
-  const p = getPresets()[name];
-  if(!p) return;
-  document.getElementById('f_subject').value = p.subject;
-  document.getElementById('f_style').value = p.style;
-  document.getElementById('f_medium').value = p.medium;
-  document.getElementById('f_lighting').value = p.lighting;
-  document.getElementById('f_comp').value = p.comp;
-  document.getElementById('f_quality').value = p.quality;
-  document.getElementById('f_background').value = p.background || '';
-  document.getElementById('f_negative').value = p.negative;
-  document.getElementById('f_hasChar').checked = !!p.hasChar;
-  document.getElementById('charOptions').style.display = p.hasChar ? 'flex' : 'none';
-  document.getElementById('f_gender').value = p.gender || '';
-  document.getElementById('f_age').value = p.age || '';
-  if(p.locks){
-    Object.keys(locks).forEach(k=>{ locks[k] = !!p.locks[k]; });
-    document.querySelectorAll('.lockbox').forEach(cb=>{
-      cb.checked = !!locks[cb.dataset.field];
-      cb.closest('.lock-toggle').classList.toggle('locked', cb.checked);
-    });
-  }
-  syntaxMode = p.syntaxMode || 'tags';
-  document.querySelectorAll('#syntaxToggle button').forEach(b=>{
-    b.classList.toggle('active', b.dataset.v === syntaxMode);
+function lockedFieldSummary(){
+  const out = [];
+  const scan = (fields, where)=>fields.forEach(f=>{
+    if(f.locked && f.text.trim()) out.push(where + ' ' + f.type + ' = "' + f.text + '"');
   });
-  buildPrompt();
+  scan(S.global.fields, 'global');
+  scan(S.global.negativeFields, 'global');
+  const scene = activeSceneObj();
+  scan(scene.fields, 'scene');
+  scan(scene.negativeFields, 'scene');
+  return out;
 }
 
-function deletePreset(name){
-  const presets = getPresets();
-  delete presets[name];
-  setPresets(presets);
-  renderPresets();
-}
-
-function renderPresets(){
-  const presets = getPresets();
-  const el = document.getElementById('presetList');
-  el.innerHTML = '';
-  Object.keys(presets).forEach(name=>{
-    const row = document.createElement('div');
-    row.style.marginBottom = '6px';
-    row.innerHTML = `<span class="tag" style="cursor:pointer;">${name}</span>`;
-    row.querySelector('.tag').onclick = ()=>loadPreset(name);
-    const del = document.createElement('button');
-    del.className = 'btn secondary';
-    del.style.padding = '2px 8px';
-    del.style.fontSize = '10px';
-    del.textContent = '×';
-    del.onclick = ()=>deletePreset(name);
-    row.appendChild(del);
-    el.appendChild(row);
-  });
-}
-
-// ---------- multi-prompt segments ----------
-function getSegments(){
-  try{ return JSON.parse(localStorage.getItem('promptforge_segments') || '[]'); }
-  catch{ return []; }
-}
-function setSegments(s){ localStorage.setItem('promptforge_segments', JSON.stringify(s)); }
-
-function addSegment(){
-  const positive = document.getElementById('posOutput').innerText;
-  const negative = document.getElementById('negOutput').innerText;
-  if(!positive || !positive.trim() || positive.includes('Fill in fields')){
-    return; // nothing built yet — silently no-op rather than adding an empty segment
+async function enhancePrompt(){
+  const statusEl = $('llmStatus');
+  statusEl.className='status'; statusEl.textContent='Sending…';
+  const draft = currentPositive();
+  const theme = $('f_theme').value.trim();
+  const profile = PF.getProfile(S.settings.modelProfile);
+  const styleInstruction = profile.promptStyle === 'natural_language'
+    ? 'Output ONLY a natural-language descriptive prompt suitable for Flux/Krea/SD3. No explanation, no markdown.'
+    : 'Output ONLY a comma-separated Danbooru-style tag prompt suitable for SDXL/Pony/Illustrious. No explanation, no markdown.';
+  const lockNote = lockedFieldSummary().length
+    ? '\nThese elements are locked and must appear essentially unchanged: ' + lockedFieldSummary().join('; ') + '.'
+    : '';
+  const themeNote = theme ? '\nThe creative direction: "' + theme + '" — depict it concretely.' : '';
+  const sys = 'You are an expert Stable Diffusion / ComfyUI prompt engineer. Expand and refine the given draft into a stronger image prompt. ' +
+    styleInstruction +
+    '\nHard rules:\n- Literal, concrete visual description only. No metaphor or narration.\n- Every phrase must describe something a camera or renderer could depict.' +
+    themeNote + lockNote;
+  try{
+    const result = await callLLM(sys, draft);
+    $('posOutput').contentEditable = true;
+    $('posOutput').innerText = result.trim();
+    outputDirty = true;
+    updateWordCount();
+    statusEl.className='status ok'; statusEl.textContent='Done. (Fields untouched — output box only.)';
+    pushHistory(result.trim(), currentNegative());
+  }catch(err){
+    statusEl.className='status err';
+    statusEl.textContent = isNetworkError(err)
+      ? 'Failed to fetch — check backend config / CORS.'
+      : 'Error: ' + err.message;
+    console.error(err);
   }
-  const labelInput = document.getElementById('segmentLabel');
-  const segments = getSegments();
-  const label = labelInput.value.trim() || `Segment ${segments.length + 1}`;
-  segments.push({ id: Date.now() + Math.random(), label, positive, negative });
-  setSegments(segments);
-  labelInput.value = '';
-  renderSegments();
 }
 
-function moveSegment(id, dir){
-  const segments = getSegments();
-  const idx = segments.findIndex(s => s.id === id);
-  const swapWith = idx + dir;
-  if(idx === -1 || swapWith < 0 || swapWith >= segments.length) return;
-  [segments[idx], segments[swapWith]] = [segments[swapWith], segments[idx]];
-  setSegments(segments);
-  renderSegments();
+const genrePool = [
+  'nature and wildlife','urban noir / detective','cosmic / deep space','underwater / oceanic',
+  'historical / period piece','steampunk','post-apocalyptic wasteland','mythology and folklore',
+  'quiet slice-of-life','gothic horror','desert and wasteland','arctic / frozen landscape',
+  'dense jungle','industrial / brutalist architecture','pastoral countryside','festival and celebration',
+  'surreal / abstract','high fantasy','noir cyberpunk','solarpunk / utopian eco-future',
+];
+
+async function generateFullDraft(){
+  const statusEl = $('llmStatus');
+  statusEl.className='status'; statusEl.textContent='Generating…';
+  let theme = $('f_theme').value.trim();
+  if(!theme) theme = genrePool[Math.floor(Math.random()*genrePool.length)];
+  const profile = PF.getProfile(S.settings.modelProfile);
+  const styleNote = profile.promptStyle==='natural_language'
+    ? 'Field values should be short natural-language phrases (a few words each), not full sentences.'
+    : 'Field values should be short comma-separated Danbooru-style tags/phrases (2-5 words each).';
+  const lockNote = lockedFieldSummary().length
+    ? '\nThese fields are fixed — invent the rest coherently with them: ' + lockedFieldSummary().join('; ') + '.'
+    : '';
+  const sys = 'You invent creative Stable Diffusion / ComfyUI image concepts. ' + styleNote +
+    '\nEvery field value must be literal, concrete visual description — no metaphor or narration.' +
+    '\nRespond with ONLY a single valid JSON object, no markdown fences, matching exactly:' +
+    '\n{"subject":"","action":"","style":"","medium":"","lighting":"","composition":"","quality":"","background":"","negative_additions":"","character":""}' +
+    '\n- "character" is a short character tag line like "1girl, adult" or "" if no character.' +
+    '\n- Keep every character an adult; do not invent a minor.' + lockNote;
+  try{
+    const raw = await callLLM(sys, 'Invent one original image concept in this space: ' + theme +
+      ". Don't default to cyberpunk unless that's the genre given.");
+    const match = raw.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error('model did not return JSON — try again or switch models');
+    const data = JSON.parse(match[0]);
+    const scene = activeSceneObj();
+    const put = (collection, type, text)=>{
+      if(!text || !String(text).trim()) return;
+      let f = collection.find(x=>x.type===type);
+      if(!f){ f = PF.makeField({type}); collection.push(f); }
+      if(f.locked) return;
+      f.text = String(text).trim();
+    };
+    put(scene.fields, 'subject', data.subject);
+    put(scene.fields, 'action', data.action);
+    put(scene.fields, 'lighting', data.lighting);
+    put(scene.fields, 'composition', data.composition);
+    put(scene.fields, 'background', data.background);
+    put(S.global.fields, 'style', data.style);
+    put(S.global.fields, 'medium', data.medium);
+    put(S.global.fields, 'quality', data.quality);
+    put(S.global.fields, 'character', data.character);
+    if(data.negative_additions && String(data.negative_additions).trim()){
+      const base = S.global.negativeFields[0];
+      if(base && !base.locked){
+        base.text = base.text.trim()
+          ? base.text + ', ' + data.negative_additions
+          : String(data.negative_additions);
+      }
+    }
+    renderFieldStacks(); commit();
+    buildPrompt();
+    const locked = lockedFieldSummary();
+    statusEl.className='status ok';
+    statusEl.textContent = 'Draft generated (genre: ' + theme + ').' +
+      (locked.length ? ' Kept ' + locked.length + ' locked field(s).' : '');
+  }catch(err){
+    statusEl.className='status err';
+    statusEl.textContent = isNetworkError(err)
+      ? 'Failed to fetch — check backend config / CORS.'
+      : 'Error: ' + err.message;
+    console.error(err);
+  }
 }
 
-function removeSegment(id){
-  setSegments(getSegments().filter(s => s.id !== id));
-  renderSegments();
-}
+// ================================================== ComfyUI + bridge ----
+let comfyWorkflowObj = null;
+let comfyClientId = null;
+try{ comfyClientId = localStorage.getItem('promptforge_comfy_client_id') || crypto.randomUUID(); }
+catch(e){ comfyClientId = 'promptforge-' + Date.now(); }
+try{ localStorage.setItem('promptforge_comfy_client_id', comfyClientId); }catch(e){}
 
-function clearSegments(){
-  if(!confirm('Delete all saved segments? This cannot be undone.')) return;
-  localStorage.removeItem('promptforge_segments');
-  renderSegments();
-}
-
-function combineSegments(){
-  const segments = getSegments();
-  if(segments.length === 0) return;
-  const sepSelect = document.getElementById('segmentSeparator').value;
-  const separator = sepSelect === 'custom' ? document.getElementById('segmentCustomSep').value : sepSelect;
-
-  const combinedPositive = segments.map(s => s.positive).join(separator);
-  const negatives = [...new Set(segments.map(s => s.negative).filter(Boolean))];
-  const combinedNegative = negatives.join(', ');
-
-  const posBox = document.getElementById('posOutput');
-  posBox.contentEditable = true;
-  posBox.innerText = combinedPositive;
-  document.getElementById('negOutput').innerText = combinedNegative;
-
-  pushHistory(combinedPositive, combinedNegative);
-}
-
-function renderSegments(){
-  const segments = getSegments();
-  const el = document.getElementById('segmentList');
-  el.innerHTML = '';
-  if(segments.length === 0){
-    el.innerHTML = '<p class="hint" style="padding-left:0;">No segments yet — build a prompt above and click "Add current build".</p>';
+function parseComfyWorkflow(){
+  const statusEl = $('comfyStatus');
+  const raw = $('comfyWorkflow').value.trim();
+  if(!raw){ statusEl.className='status err'; statusEl.textContent='Paste a workflow JSON first.'; return; }
+  let obj;
+  try{ obj = JSON.parse(raw); }
+  catch(e){ statusEl.className='status err'; statusEl.textContent='Invalid JSON: '+e.message; return; }
+  const candidates = Object.entries(obj).filter(([id,node])=>
+    node && typeof node==='object' && node.inputs && typeof node.inputs.text==='string');
+  if(!candidates.length){
+    statusEl.className='status err';
+    statusEl.textContent='No text-input nodes found — make sure this is an API-format export.';
     return;
   }
-  segments.forEach((seg, i)=>{
-    const row = document.createElement('div');
-    row.style.cssText = 'margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid var(--border);';
-    const label = document.createElement('div');
-    label.style.cssText = 'font-family:var(--mono); font-size:11px; color:var(--accent); margin-bottom:3px;';
-    label.textContent = `${i + 1}. ${seg.label}`;
-    const preview = document.createElement('div');
-    preview.style.cssText = 'font-family:var(--mono); font-size:12px; margin-bottom:6px;';
-    preview.textContent = seg.positive.length > 80 ? seg.positive.slice(0, 80) + '…' : seg.positive;
-    const btnRow = document.createElement('div');
-    btnRow.className = 'btn-row';
-    btnRow.style.paddingLeft = '0';
-    const mkBtn = (label, fn, disabled)=>{
-      const b = document.createElement('button');
-      b.className = 'btn secondary';
-      b.style.cssText = 'padding:3px 10px; font-size:10px;';
-      b.textContent = label;
-      b.disabled = !!disabled;
-      b.onclick = fn;
-      return b;
-    };
-    btnRow.appendChild(mkBtn('↑', ()=>moveSegment(seg.id, -1), i === 0));
-    btnRow.appendChild(mkBtn('↓', ()=>moveSegment(seg.id, 1), i === segments.length - 1));
-    btnRow.appendChild(mkBtn('Remove', ()=>removeSegment(seg.id)));
-    row.appendChild(label);
-    row.appendChild(preview);
-    row.appendChild(btnRow);
-    el.appendChild(row);
+  comfyWorkflowObj = obj;
+  const posSelect = $('comfyPosNode');
+  const negSelect = $('comfyNegNode');
+  posSelect.innerHTML=''; negSelect.innerHTML='<option value="">None</option>';
+  candidates.forEach(([id,node])=>{
+    const label = id + ' · ' + ((node._meta&&node._meta.title)||node.class_type) + ' — "' + node.inputs.text.slice(0,30) + '"';
+    posSelect.appendChild(new Option(label,id));
+    negSelect.appendChild(new Option(label,id));
   });
+  $('comfyNodeSelectRow').style.display='flex';
+  statusEl.className='status ok';
+  statusEl.textContent='Found ' + candidates.length + ' text node(s). Pick positive/negative below.';
+  localStorage.setItem('promptforge_comfy_workflow', raw);
+  localStorage.setItem('promptforge_comfy_url', $('comfyUrl').value.trim());
 }
 
-// ---------- prompt history ----------
-function getHistory(){
-  try{ return JSON.parse(localStorage.getItem('promptforge_history') || '[]'); }
-  catch{ return []; }
-}
-function setHistory(h){ localStorage.setItem('promptforge_history', JSON.stringify(h)); }
-
-function pushHistory(positive, negative){
-  if(!positive || !positive.trim() || positive.includes('Fill in fields')) return;
-  const history = getHistory();
-  if(history.length && history[0].positive === positive && history[0].negative === negative) return; // skip exact repeat
-  history.unshift({ id: Date.now() + Math.random(), ts: new Date().toISOString(), positive, negative, syntaxMode });
-  if(history.length > 50) history.length = 50;
-  setHistory(history);
-  renderHistory();
-  updateWordCount();
-  saveDraft();
-  if(document.getElementById('bridgeAutoPush').checked) pushToBridge(false, positive, negative);
+async function sendToComfyUI(){
+  const statusEl = $('comfyStatus');
+  if(!comfyWorkflowObj){ statusEl.className='status err'; statusEl.textContent='Parse a workflow first.'; return; }
+  const posId = $('comfyPosNode').value;
+  const negId = $('comfyNegNode').value;
+  if(!posId){ statusEl.className='status err'; statusEl.textContent='Select a positive prompt node.'; return; }
+  let base;
+  try{ base = new URL($('comfyUrl').value.trim()).origin; }
+  catch(e){ statusEl.className='status err'; statusEl.textContent='ComfyUI base URL is not valid.'; return; }
+  const clone = JSON.parse(JSON.stringify(comfyWorkflowObj));
+  clone[posId].inputs.text = currentPositive();
+  if(negId) clone[negId].inputs.text = currentNegative();
+  statusEl.className='status'; statusEl.textContent='Sending…';
+  try{
+    const res = await fetch(base + '/prompt', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({prompt:clone, client_id:comfyClientId}),
+    });
+    if(!res.ok){
+      const errText = await res.text();
+      throw new Error('HTTP ' + res.status + ': ' + errText.slice(0,200));
+    }
+    const data = await res.json();
+    statusEl.className='status ok';
+    statusEl.textContent='Queued — prompt_id ' + data.prompt_id;
+  }catch(err){
+    statusEl.className='status err';
+    statusEl.textContent = isNetworkError(err)
+      ? 'Failed to fetch — start ComfyUI with --enable-cors-header "*", and confirm the URL/port.'
+      : 'Error: ' + err.message;
+    console.error(err);
+  }
 }
 
 async function pushToBridge(manual, positiveOverride, negativeOverride){
-  const statusEl = document.getElementById('bridgeStatus');
-  const raw = document.getElementById('bridgeUrl').value.trim();
+  const statusEl = $('bridgeStatus');
+  const raw = $('bridgeUrl').value.trim();
   let base;
   try{ base = new URL(raw).origin; }
-  catch{ if(manual){ statusEl.className='status err'; statusEl.textContent='Bridge URL is not valid.'; } return; }
-
-  const positive = positiveOverride !== undefined ? positiveOverride : document.getElementById('posOutput').innerText;
-  const negative = negativeOverride !== undefined ? negativeOverride : document.getElementById('negOutput').innerText;
-  if(manual){ statusEl.className='status'; statusEl.textContent='Pushing...'; }
-
+  catch(e){ if(manual){ statusEl.className='status err'; statusEl.textContent='Bridge URL is not valid.'; } return; }
+  const positive = positiveOverride !== undefined ? positiveOverride : currentPositive();
+  const negative = negativeOverride !== undefined ? negativeOverride : currentNegative();
+  if(manual){ statusEl.className='status'; statusEl.textContent='Pushing…'; }
   try{
     const res = await fetch(base + '/set_prompt', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ positive, negative })
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({positive, negative}),
     });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     localStorage.setItem('promptforge_bridge_url', raw);
     if(manual){ statusEl.className='status ok'; statusEl.textContent='Pushed to bridge.'; }
-  } catch(err){
-    // silent on auto-push (don't spam status on every keystroke-triggered build); loud on manual push
+  }catch(err){
     if(manual){
-      statusEl.className = 'status err';
+      statusEl.className='status err';
       statusEl.textContent = isNetworkError(err)
         ? 'Failed to fetch — is promptforge_bridge.py running on this port?'
         : 'Error: ' + err.message;
@@ -1129,277 +1975,105 @@ async function pushToBridge(manual, positiveOverride, negativeOverride){
   }
 }
 
-function loadHistoryEntry(id){
-  const entry = getHistory().find(h => h.id === id);
-  if(!entry) return;
-  syntaxMode = entry.syntaxMode || syntaxMode;
-  document.querySelectorAll('#syntaxToggle button').forEach(b=>{
-    b.classList.toggle('active', b.dataset.v === syntaxMode);
+// ===================================================== command palette ----
+const COMMANDS = [
+  {name:'Add scene', fn:addScene},
+  {name:'Duplicate current scene', fn:()=>{ const s=currentTabScene()||activeSceneObj(); const c=PF.duplicateScene(S,s.id); if(c) selectTab(c.id); }},
+  {name:'Build prompt', fn:buildPrompt},
+  {name:'Generate variants', fn:openVariants},
+  {name:'Snapshot now', fn:createSnapshot},
+  {name:'Export project JSON', fn:exportProjectFile},
+  {name:'Export backup (all data)', fn:exportBackupAll},
+  {name:'Export positive/negative TXT', fn:exportTxt},
+  {name:'Toggle density', fn:cycleDensity},
+  {name:'Go to prompt health', fn:scrollToLint},
+  {name:'Output mode: single', fn:()=>{S.settings.outputMode='single'; renderSettings(); commit();}},
+  {name:'Output mode: scenes joined', fn:()=>{S.settings.outputMode='scenes_joined'; renderSettings(); commit();}},
+  {name:'Output mode: BREAK blocks', fn:()=>{S.settings.outputMode='break_blocks'; renderSettings(); commit();}},
+];
+PF.listProfiles().forEach(p=>{
+  COMMANDS.push({name:'Profile: ' + p.label, fn:()=>{S.settings.modelProfile=p.id; renderSettings(); commit();}});
+});
+let palSel = 0;
+function openPalette(){
+  $('paletteOverlay').classList.add('open');
+  $('paletteInput').value='';
+  palSel = 0;
+  renderPalette();
+  setTimeout(()=>$('paletteInput').focus(), 30);
+}
+function paletteMatches(){
+  const q = $('paletteInput').value.toLowerCase();
+  return COMMANDS.filter(c=>c.name.toLowerCase().includes(q));
+}
+function renderPalette(){
+  const list = $('paletteList');
+  list.innerHTML='';
+  paletteMatches().forEach((c,i)=>{
+    const d = document.createElement('div');
+    d.className='pal-item' + (i===palSel?' sel':'');
+    d.textContent = c.name;
+    d.onclick = ()=>{ closeOverlay('paletteOverlay'); c.fn(); };
+    list.appendChild(d);
   });
-  const posBox = document.getElementById('posOutput');
-  posBox.contentEditable = true;
-  posBox.innerText = entry.positive;
-  document.getElementById('negOutput').innerText = entry.negative;
-  updateWordCount();
-  saveDraft();
+}
+$('paletteInput').addEventListener('input', ()=>{ palSel=0; renderPalette(); });
+$('paletteInput').addEventListener('keydown', e=>{
+  const matches = paletteMatches();
+  if(e.key==='ArrowDown'){ palSel=Math.min(matches.length-1, palSel+1); renderPalette(); e.preventDefault(); }
+  if(e.key==='ArrowUp'){ palSel=Math.max(0, palSel-1); renderPalette(); e.preventDefault(); }
+  if(e.key==='Enter' && matches[palSel]){ closeOverlay('paletteOverlay'); matches[palSel].fn(); }
+  if(e.key==='Escape'){ closeOverlay('paletteOverlay'); }
+});
+
+// keyboard shortcuts
+document.addEventListener('keydown', e=>{
+  if((e.ctrlKey||e.metaKey) && e.key==='Enter'){ e.preventDefault(); buildPrompt(); }
+  if((e.ctrlKey||e.metaKey) && (e.key==='k'||e.key==='K')){ e.preventDefault(); openPalette(); }
+  if(e.key==='Escape'){ closeOverlay('paletteOverlay'); closeOverlay('variantOverlay'); }
+});
+document.querySelectorAll('.overlay').forEach(o=>{
+  o.addEventListener('click', e=>{ if(e.target===o) o.classList.remove('open'); });
+});
+
+// ============================================================ density ----
+function cycleDensity(){
+  const order = ['comfortable','compact','ultra'];
+  const cur = S.settings.density || 'comfortable';
+  const next = order[(order.indexOf(cur)+1) % order.length];
+  S.settings.density = next;
+  applyDensity();
+  persist();
+}
+function applyDensity(){
+  document.body.className = S.settings.density==='comfortable' ? '' : 'density-' + S.settings.density;
+  $('densityPill').textContent = 'density: ' + (S.settings.density||'comfortable');
 }
 
-function deleteHistoryEntry(id){
-  setHistory(getHistory().filter(h => h.id !== id));
+// ================================================================ init ----
+function renderAll(){
+  renderSceneBar();
+  renderFieldStacks();
+  renderSettings();
+  renderLibraries();
   renderHistory();
+  renderSnapshots();
+  applyDensity();
+  compileNow();
 }
 
-function clearHistory(){
-  if(!confirm('Delete all prompt history? This cannot be undone.')) return;
-  localStorage.removeItem('promptforge_history');
-  renderHistory();
-}
-
-function renderHistory(){
-  const history = getHistory();
-  const el = document.getElementById('historyList');
-  el.innerHTML = '';
-  if(history.length === 0){
-    el.innerHTML = '<p class="hint" style="padding-left:0;">No history yet — build a prompt to start logging.</p>';
-    return;
-  }
-  history.slice(0, 20).forEach(entry=>{
-    const row = document.createElement('div');
-    row.style.marginBottom = '10px';
-    row.style.paddingBottom = '8px';
-    row.style.borderBottom = '1px solid var(--border)';
-    const time = new Date(entry.ts).toLocaleString();
-    const preview = entry.positive.length > 80 ? entry.positive.slice(0, 80) + '…' : entry.positive;
-    const meta = document.createElement('div');
-    meta.style.cssText = 'font-family:var(--mono); font-size:10px; color:var(--muted); margin-bottom:4px;';
-    meta.textContent = `${time} · ${entry.syntaxMode}`;
-    const text = document.createElement('div');
-    text.style.cssText = 'font-family:var(--mono); font-size:12px; margin-bottom:6px;';
-    text.textContent = preview;
-    const btnRow = document.createElement('div');
-    btnRow.className = 'btn-row';
-    btnRow.style.paddingLeft = '0';
-    const loadBtn = document.createElement('button');
-    loadBtn.className = 'btn secondary';
-    loadBtn.style.cssText = 'padding:3px 10px; font-size:10px;';
-    loadBtn.textContent = 'Load';
-    loadBtn.onclick = ()=>loadHistoryEntry(entry.id);
-    const delBtn = document.createElement('button');
-    delBtn.className = 'btn secondary';
-    delBtn.style.cssText = 'padding:3px 10px; font-size:10px;';
-    delBtn.textContent = 'Delete';
-    delBtn.onclick = ()=>deleteHistoryEntry(entry.id);
-    btnRow.appendChild(loadBtn);
-    btnRow.appendChild(delBtn);
-    row.appendChild(meta);
-    row.appendChild(text);
-    row.appendChild(btnRow);
-    el.appendChild(row);
-  });
-}
-
-// ---------- ComfyUI automation ----------
-let comfyWorkflowObj = null;
-let comfyClientId = null;
-try{ comfyClientId = localStorage.getItem('promptforge_comfy_client_id') || crypto.randomUUID(); }
-catch{ comfyClientId = 'promptforge-' + Date.now(); }
-localStorage.setItem('promptforge_comfy_client_id', comfyClientId);
-
-function parseComfyWorkflow(){
-  const statusEl = document.getElementById('comfyStatus');
-  const raw = document.getElementById('comfyWorkflow').value.trim();
-  if(!raw){ statusEl.className = 'status err'; statusEl.textContent = 'Paste a workflow JSON first.'; return; }
-  let obj;
-  try{ obj = JSON.parse(raw); }
-  catch(e){ statusEl.className = 'status err'; statusEl.textContent = 'Invalid JSON: ' + e.message; return; }
-
-  const candidates = Object.entries(obj).filter(([id, node]) =>
-    node && typeof node === 'object' && node.inputs && typeof node.inputs.text === 'string'
-  );
-  if(candidates.length === 0){
-    statusEl.className = 'status err';
-    statusEl.textContent = 'No text-input nodes found — make sure this is an API-format export (Workflow → Export (API)), not the regular workflow export.';
-    return;
-  }
-
-  comfyWorkflowObj = obj;
-  const posSelect = document.getElementById('comfyPosNode');
-  const negSelect = document.getElementById('comfyNegNode');
-  posSelect.innerHTML = '';
-  negSelect.innerHTML = '<option value="">None</option>';
-  candidates.forEach(([id, node])=>{
-    const label = `${id} · ${node._meta?.title || node.class_type} — "${node.inputs.text.slice(0, 30)}"`;
-    posSelect.appendChild(new Option(label, id));
-    negSelect.appendChild(new Option(label, id));
-  });
-
-  document.getElementById('comfyNodeSelectRow').style.display = 'flex';
-  statusEl.className = 'status ok';
-  statusEl.textContent = `Found ${candidates.length} text node(s). Pick which is positive/negative below.`;
-
-  localStorage.setItem('promptforge_comfy_workflow', raw);
-  localStorage.setItem('promptforge_comfy_url', document.getElementById('comfyUrl').value.trim());
-}
-
-async function sendToComfyUI(){
-  const statusEl = document.getElementById('comfyStatus');
-  if(!comfyWorkflowObj){ statusEl.className = 'status err'; statusEl.textContent = 'Parse a workflow first.'; return; }
-  const posId = document.getElementById('comfyPosNode').value;
-  const negId = document.getElementById('comfyNegNode').value;
-  if(!posId){ statusEl.className = 'status err'; statusEl.textContent = 'Select a positive prompt node.'; return; }
-
-  let base;
-  try{ base = new URL(document.getElementById('comfyUrl').value.trim()).origin; }
-  catch{ statusEl.className = 'status err'; statusEl.textContent = 'ComfyUI base URL is not valid.'; return; }
-
-  const clone = JSON.parse(JSON.stringify(comfyWorkflowObj));
-  clone[posId].inputs.text = document.getElementById('posOutput').innerText;
-  if(negId) clone[negId].inputs.text = document.getElementById('negOutput').innerText;
-
-  statusEl.className = 'status';
-  statusEl.textContent = 'Sending...';
-  try{
-    const res = await fetch(base + '/prompt', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ prompt: clone, client_id: comfyClientId })
-    });
-    if(!res.ok){
-      const errText = await res.text();
-      throw new Error(`HTTP ${res.status}: ${errText.slice(0, 200)}`);
-    }
-    const data = await res.json();
-    statusEl.className = 'status ok';
-    statusEl.textContent = `Queued — prompt_id ${data.prompt_id}`;
-  } catch(err){
-    statusEl.className = 'status err';
-    if(isNetworkError(err)){
-      statusEl.textContent = 'Failed to fetch — start ComfyUI with --enable-cors-header "*", and confirm the URL/port.';
-    } else {
-      statusEl.textContent = 'Error: ' + err.message;
-    }
-    console.error(err);
-  }
-}
-
-// restore comfy config on load
+loadState();
+// restore comfy/bridge config (shared keys with v1 — intentional)
 (function initComfy(){
   const savedUrl = localStorage.getItem('promptforge_comfy_url');
   const savedWorkflow = localStorage.getItem('promptforge_comfy_workflow');
-  if(savedUrl) document.getElementById('comfyUrl').value = savedUrl;
-  if(savedWorkflow){
-    document.getElementById('comfyWorkflow').value = savedWorkflow;
-    parseComfyWorkflow();
-  }
-  const savedBridgeUrl = localStorage.getItem('promptforge_bridge_url');
-  if(savedBridgeUrl) document.getElementById('bridgeUrl').value = savedBridgeUrl;
+  if(savedUrl) $('comfyUrl').value = savedUrl;
+  if(savedWorkflow){ $('comfyWorkflow').value = savedWorkflow; parseComfyWorkflow(); }
+  const savedBridge = localStorage.getItem('promptforge_bridge_url');
+  if(savedBridge) $('bridgeUrl').value = savedBridge;
 })();
-
-// ---------- draft autosave/restore ----------
-const DRAFT_FIELD_IDS = ['f_subject','f_style','f_medium','f_lighting','f_comp','f_quality','f_background','f_negative','f_theme'];
-
-function saveDraft(){
-  const draft = {};
-  DRAFT_FIELD_IDS.forEach(id=>{ draft[id] = document.getElementById(id).value; });
-  draft.hasChar = document.getElementById('f_hasChar').checked;
-  draft.gender = document.getElementById('f_gender').value;
-  draft.age = document.getElementById('f_age').value;
-  draft.syntaxMode = syntaxMode;
-  draft.positiveOutput = document.getElementById('posOutput').innerText;
-  draft.negativeOutput = document.getElementById('negOutput').innerText;
-  localStorage.setItem('promptforge_draft', JSON.stringify(draft));
-}
-
-function restoreDraft(){
-  let draft;
-  try{ draft = JSON.parse(localStorage.getItem('promptforge_draft')); }
-  catch{ return; }
-  if(!draft) return;
-
-  DRAFT_FIELD_IDS.forEach(id=>{
-    if(draft[id] !== undefined) document.getElementById(id).value = draft[id];
-  });
-  document.getElementById('f_hasChar').checked = !!draft.hasChar;
-  document.getElementById('charOptions').style.display = draft.hasChar ? 'flex' : 'none';
-  document.getElementById('f_gender').value = draft.gender || '';
-  document.getElementById('f_age').value = draft.age || '';
-  syntaxMode = draft.syntaxMode || syntaxMode;
-  document.querySelectorAll('#syntaxToggle button').forEach(b=>{
-    b.classList.toggle('active', b.dataset.v === syntaxMode);
-  });
-
-  if(draft.positiveOutput && !draft.positiveOutput.includes('Fill in fields')){
-    const posBox = document.getElementById('posOutput');
-    posBox.contentEditable = true;
-    posBox.innerText = draft.positiveOutput;
-    document.getElementById('negOutput').innerText = draft.negativeOutput || '';
-    updateWordCount();
-  }
-}
-
-// Autosave on every keystroke in a draft field, not just on Build — so a refresh
-// mid-typing doesn't lose work that was never explicitly built.
-DRAFT_FIELD_IDS.forEach(id=>{
-  document.getElementById(id).addEventListener('input', saveDraft);
-});
-document.getElementById('f_hasChar').addEventListener('change', saveDraft);
-document.getElementById('f_gender').addEventListener('change', saveDraft);
-document.getElementById('f_age').addEventListener('change', saveDraft);
-
-// ---------- backup & restore ----------
-function exportBackup(){
-  const backup = {
-    presets: getPresets(),
-    history: getHistory(),
-    segments: getSegments(),
-    comfy_url: localStorage.getItem('promptforge_comfy_url') || '',
-    comfy_workflow: localStorage.getItem('promptforge_comfy_workflow') || '',
-    bridge_url: localStorage.getItem('promptforge_bridge_url') || '',
-    draft: (()=>{ try{ return JSON.parse(localStorage.getItem('promptforge_draft')); } catch{ return null; } })(),
-    exported_at: new Date().toISOString()
-  };
-  const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `promptforge-backup-${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function importBackup(event){
-  const file = event.target.files[0];
-  const statusEl = document.getElementById('backupStatus');
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    try{
-      const data = JSON.parse(reader.result);
-      if(data.presets) setPresets(data.presets);
-      if(data.history) setHistory(data.history);
-      if(data.segments) setSegments(data.segments);
-      if(data.comfy_url) localStorage.setItem('promptforge_comfy_url', data.comfy_url);
-      if(data.comfy_workflow) localStorage.setItem('promptforge_comfy_workflow', data.comfy_workflow);
-      if(data.bridge_url) localStorage.setItem('promptforge_bridge_url', data.bridge_url);
-      if(data.draft) localStorage.setItem('promptforge_draft', JSON.stringify(data.draft));
-      renderPresets();
-      renderHistory();
-      renderSegments();
-      statusEl.className = 'status ok';
-      statusEl.textContent = 'Backup imported. Reload the page to fully apply the restored draft, workflow, and bridge settings.';
-    } catch(e){
-      statusEl.className = 'status err';
-      statusEl.textContent = 'Invalid backup file: ' + e.message;
-    }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
-}
-
-renderHistory();
-renderSegments();
-renderPresets();
-restoreDraft();
+uiTab = S.scenes[0] ? S.scenes[0].id : 'global';
+renderAll();
 </script>
 </body>
 </html>

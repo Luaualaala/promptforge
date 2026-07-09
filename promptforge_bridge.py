@@ -9,6 +9,13 @@ Default port: 8199
 Endpoints:
   POST /set_prompt   { "positive": "...", "negative": "..." }   <- called by the HTML tool
   GET  /get_prompt    -> { "positive": "...", "negative": "...", "updated_at": <epoch> }  <- called by the ComfyUI node
+
+  POST /set_state    { ...full PromptForgeState JSON... }        <- optional, v2 additions
+  GET  /get_state     -> last pushed state JSON (or {})          <- lets tools sync full state,
+                                                                    not just compiled strings
+
+The v1 endpoints are unchanged — the original PromptForgeBridge node and the
+old HTML tool keep working against this file exactly as before.
 """
 import json
 import sys
@@ -16,6 +23,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 STATE = {"positive": "", "negative": "", "updated_at": None}
+FORGE_STATE = {"state": None, "updated_at": None}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -41,21 +49,27 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/get_prompt"):
             self._send_json(200, STATE)
+        elif self.path.startswith("/get_state"):
+            self._send_json(200, FORGE_STATE["state"] or {})
         else:
             self._send_json(404, {"error": "not found"})
 
     def do_POST(self):
+        length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(length)
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            self._send_json(400, {"error": "invalid JSON"})
+            return
         if self.path.startswith("/set_prompt"):
-            length = int(self.headers.get("Content-Length", 0))
-            raw = self.rfile.read(length)
-            try:
-                data = json.loads(raw)
-            except json.JSONDecodeError:
-                self._send_json(400, {"error": "invalid JSON"})
-                return
             STATE["positive"] = data.get("positive", "")
             STATE["negative"] = data.get("negative", "")
             STATE["updated_at"] = time.time()
+            self._send_json(200, {"ok": True})
+        elif self.path.startswith("/set_state"):
+            FORGE_STATE["state"] = data
+            FORGE_STATE["updated_at"] = time.time()
             self._send_json(200, {"ok": True})
         else:
             self._send_json(404, {"error": "not found"})
@@ -70,6 +84,8 @@ if __name__ == "__main__":
     print(f"Prompt Forge bridge running on http://127.0.0.1:{port}")
     print("  GET  /get_prompt   (called by the ComfyUI node)")
     print("  POST /set_prompt   (called by the HTML tool)")
+    print("  GET  /get_state    (optional full-state sync)")
+    print("  POST /set_state    (optional full-state sync)")
     print("Ctrl+C to stop.")
     try:
         server.serve_forever()
