@@ -18,7 +18,7 @@ file alone, it shows a clear error banner instead of silently breaking.
 
 ## Three ways to use it
 
-### 1. Standalone browser (unchanged golden path)
+### 1. Standalone browser (unchanged)
 
 Open `prompt-forge.html`, build a prompt, copy it. Everything from v1 still
 works: LLM enhance/draft (local server or Anthropic), presets (now
@@ -43,7 +43,7 @@ wire its outputs into your text encoders. The browser app pushes on every
 build; `promptforge_live.js` polls and fills `ai_positive` / `ai_negative`.
 Nothing about this route changed.
 
-### 3. Native ComfyUI route (new golden path)
+### 3. Native ComfyUI route (path)
 
 1. Copy `prompt-bridge-forge/` into `ComfyUI/custom_nodes/` and restart ComfyUI.
 2. Click the **Prompt Forge** button (top menu, or the floating ⚒ button).
